@@ -1,0 +1,34 @@
+# Normalisation des fins de ligne : LF dans le dépôt, CRLF dans la copie de travail.
+# Rend l'historique lisible quel que soit l'éditeur utilisé.
+* text=auto
+
+# Fichiers qui doivent rester en CRLF, y compris hors Windows.
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.sln   text eol=crlf
+
+# Fichiers qui doivent rester en LF.
+*.sh    text eol=lf
+
+# Binaires : jamais de conversion, jamais de diff textuel.
+*.dll   binary
+*.sys   binary
+*.exe   binary
+*.lib   binary
+*.pdb   binary
+*.msi   binary
+*.msix  binary
+*.cab   binary
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.ttf   binary
+*.woff2 binary
+*.pfx   binary
+*.snk   binary
+
+# Diff plus lisible sur les sources C#.
+*.cs    text diff=csharp
