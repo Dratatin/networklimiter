@@ -74,6 +74,12 @@ dotnet_diagnostic.CA2016.severity = error
 # Ne pas lever d'exception depuis un finaliseur ou un Dispose.
 dotnet_diagnostic.CA1065.severity = error
 
+# CA1711 interdit les suffixes reserves. « Queue » est autorise ici : DelayQueue EST une file
+# au sens du domaine, et la renommer en « DelayBuffer » rendrait le code moins clair pour
+# satisfaire une regle de nommage. C'est l'echappatoire prevue par l'analyseur, utilisee avec
+# une raison, pas une desactivation de la regle.
+dotnet_code_quality.CA1711.allowed_suffixes = Queue
+
 [tests/**/*.cs]
 # Les tests peuvent nommer leurs methodes avec des underscores descriptifs.
 dotnet_diagnostic.CA1707.severity = none

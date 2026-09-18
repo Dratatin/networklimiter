@@ -152,20 +152,20 @@ et vérifier le retour au débit nominal.
 
 > Écrire ces tests **d'abord** et vérifier qu'ils échouent avant d'implémenter.
 
-- [ ] T058 [P] [US1] Écrire les tests d'invariants du seau à jetons dans `tests/NetworkLimiter.Core.Tests/Shaping/TokenBucketTests.cs` : `availableTokens ∈ [0, capacityBytes]`, volume autorisé à 10 % près sur T ≥ 10 s en **horloge virtuelle**, changement de débit à chaud sans remise à zéro, **horloge qui recule** ne crée pas de jetons et ne bloque pas le seau, **aucun `Thread.Sleep`**
-- [ ] T059 [P] [US1] Écrire les tests de file de retard dans `tests/NetworkLimiter.Core.Tests/Shaping/DelayQueueTests.cs` : borne par règle, rejet en queue **compté**, et FR-003c — pour un flux temporisable, le compteur de rejets reste à **zéro** quel que soit le plafond
+- [X] T058 [P] [US1] Écrire les tests d'invariants du seau à jetons dans `tests/NetworkLimiter.Core.Tests/Shaping/TokenBucketTests.cs` : `availableTokens ∈ [0, capacityBytes]`, volume autorisé à 10 % près sur T ≥ 10 s en **horloge virtuelle**, changement de débit à chaud sans remise à zéro, **horloge qui recule** ne crée pas de jetons et ne bloque pas le seau, **aucun `Thread.Sleep`**
+- [X] T059 [P] [US1] Écrire les tests de file de retard dans `tests/NetworkLimiter.Core.Tests/Shaping/DelayQueueTests.cs` : borne par règle, rejet en queue **compté**, et FR-003c — pour un flux temporisable, le compteur de rejets reste à **zéro** quel que soit le plafond
 - [ ] T060 [P] [US1] Écrire les tests de résolution de règle dans `tests/NetworkLimiter.Core.Tests/Rules/RuleResolutionTests.cs` : appariement exact par chemin, repli par nom quand le chemin n'existe plus, **`matchMode` toujours remonté** (FR-039c), refus d'apparier un homonyme d'un autre emplacement sans le signaler
 - [ ] T061 [P] [US1] Écrire les tests de contrat dans `tests/NetworkLimiter.Contracts.Tests/RuleMessagesTests.cs` : `UpsertRule`, `DeleteRule`, `SetRuleEnabled` testés à `min-1`, `min`, `max`, `max+1`, sans élévation, avec cible en doublon
 - [ ] T062 [P] [US1] Écrire le test d'intégration dans `tests/NetworkLimiter.Integration.Tests/Stories/ApplyRuleTests.cs` : règle appliquée en < 5 s sans rompre les connexions établies, modification en < 5 s, retrait en < 5 s, autres applications non affectées
 
 ### Implementation for User Story 1
 
-- [ ] T063 [P] [US1] Implémenter `TokenBucket` dans `src/NetworkLimiter.Core/Shaping/TokenBucket.cs`, capacité `max(2 × MTU, débit × 100 ms)`
-- [ ] T064 [P] [US1] Implémenter `DelayQueue` avec compteur de rejets dans `src/NetworkLimiter.Core/Shaping/DelayQueue.cs`
+- [X] T063 [P] [US1] Implémenter `TokenBucket` dans `src/NetworkLimiter.Core/Shaping/TokenBucket.cs`, capacité `max(2 × MTU, débit × 100 ms)`
+- [X] T064 [P] [US1] Implémenter `DelayQueue` avec compteur de rejets dans `src/NetworkLimiter.Core/Shaping/DelayQueue.cs`
 - [ ] T065 [P] [US1] Définir `Rule` et `AppIdentity` dans `src/NetworkLimiter.Contracts/Messages/` avec les contraintes de data-model.md : plafonds `null` ou 10 240 à 1 073 741 824, `enabled`, `exemptFromGlobal`, `executablePath` ≤ 32 767 caractères
 - [ ] T066 [US1] Implémenter `RuleResolver` (appariement exact puis repli, `matchMode`, nombre de processus couverts) dans `src/NetworkLimiter.Core/Rules/RuleResolver.cs`
 - [ ] T067 [US1] Implémenter `ShapingPipeline` dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs` : paquet → flux → PID → application → règle → seau → réinjection, avec passage sans limitation pour `scope != Internet` et pour tout flux inconnu
-- [ ] T068 [US1] Implémenter la politique de rejet dans `src/NetworkLimiter.Core/Shaping/DropPolicy.cs` : temporisation quand le protocole dispose d'un contrôle de congestion (FR-003c, zéro rejet), rejet uniquement en descendant sans contrôle de congestion avec tolérance 20 % (FR-003a)
+- [X] T068 [US1] Implémenter la politique de rejet dans `src/NetworkLimiter.Core/Shaping/DropPolicy.cs` : temporisation quand le protocole dispose d'un contrôle de congestion (FR-003c, zéro rejet), rejet uniquement en descendant sans contrôle de congestion avec tolérance 20 % (FR-003a)
 - [ ] T069 [US1] Implémenter les gestionnaires `UpsertRule`, `DeleteRule`, `SetRuleEnabled` dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs`, **transactionnels du point de vue de l'appelant** : validation complète → application mémoire → persistance atomique, échec à toute étape laissant l'état inchangé
 - [ ] T070 [US1] Propager les changements de règle au pipeline vivant en < 5 s, sans recréer les seaux existants, dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs`
 - [ ] T071 [US1] Diffuser `StateChanged` à **tous** les clients connectés, y compris non élevés, dans `src/NetworkLimiter.Service/Ipc/StateBroadcaster.cs`
