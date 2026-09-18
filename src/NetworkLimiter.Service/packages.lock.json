@@ -43,6 +43,12 @@
           "System.ServiceProcess.ServiceController": "10.0.12"
         }
       },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Direct",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "kdj5cqOwgZCMltEhQ4+WVUoFkMHG08EJfy1MDyS9H+FBg66vTTFyX8YcNl8IQh5wRQv79P+iduQgDGY8ucBR+w=="
+      },
       "Serilog": {
         "type": "Direct",
         "requested": "[4.4.0, )",
@@ -364,6 +370,12 @@
       }
     },
     "net10.0-windows7.0/win-x64": {
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Direct",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "kdj5cqOwgZCMltEhQ4+WVUoFkMHG08EJfy1MDyS9H+FBg66vTTFyX8YcNl8IQh5wRQv79P+iduQgDGY8ucBR+w=="
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.12",

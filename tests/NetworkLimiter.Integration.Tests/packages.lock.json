@@ -313,11 +313,6 @@
           "Newtonsoft.Json": "13.0.3"
         }
       },
-      "Microsoft.Win32.SystemEvents": {
-        "type": "Transitive",
-        "resolved": "6.0.0",
-        "contentHash": "hqTM5628jSsQiv+HGpiq3WKBl2c8v1KZfby2J6Pr7pEPlK9waPdgEO6b8A/+/xn/yZ9ulv8HuqK71ONy2tg67A=="
-      },
       "Newtonsoft.Json": {
         "type": "Transitive",
         "resolved": "13.0.3",
@@ -445,6 +440,7 @@
         "dependencies": {
           "Microsoft.Extensions.Hosting": "[10.0.12, )",
           "Microsoft.Extensions.Hosting.WindowsServices": "[10.0.12, )",
+          "Microsoft.Win32.SystemEvents": "[10.0.12, )",
           "NetworkLimiter.Contracts": "[0.1.0, )",
           "NetworkLimiter.Core": "[0.1.0, )",
           "Serilog": "[4.4.0, )",
@@ -499,6 +495,12 @@
           "Microsoft.Extensions.Logging.EventLog": "10.0.12",
           "System.ServiceProcess.ServiceController": "10.0.12"
         }
+      },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "kdj5cqOwgZCMltEhQ4+WVUoFkMHG08EJfy1MDyS9H+FBg66vTTFyX8YcNl8IQh5wRQv79P+iduQgDGY8ucBR+w=="
       },
       "Serilog": {
         "type": "CentralTransitive",

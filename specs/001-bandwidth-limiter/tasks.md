@@ -110,8 +110,8 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Résilience environnementale (principe II)
 
-- [ ] T047 [P] Écrire les tests de résilience dans `tests/NetworkLimiter.Service.Tests/Resilience/NetworkChangeTests.cs` : changement d'adaptateur Wi-Fi ↔ Ethernet, mise en veille suivie de reprise, arrivée d'un partage de connexion mobile, présence d'adaptateurs virtuels Hyper-V / WSL / Docker, réseau marqué comme mesuré. Attendu : **les règles restent appliquées ou sont réappliquées en moins de 10 secondes, sans redémarrage du service** (FR-036)
-- [ ] T048 Implémenter `NetworkChangeMonitor` dans `src/NetworkLimiter.Service/Resilience/NetworkChangeMonitor.cs` : abonnement aux changements d'adresse et d'adaptateur, reprise de veille, réouverture des handles si nécessaire, journalisation de chaque bascule
+- [X] T047 [P] Écrire les tests de résilience dans `tests/NetworkLimiter.Service.Tests/Resilience/NetworkChangeTests.cs` : changement d'adaptateur Wi-Fi ↔ Ethernet, mise en veille suivie de reprise, arrivée d'un partage de connexion mobile, présence d'adaptateurs virtuels Hyper-V / WSL / Docker, réseau marqué comme mesuré. Attendu : **les règles restent appliquées ou sont réappliquées en moins de 10 secondes, sans redémarrage du service** (FR-036)
+- [X] T048 Implémenter `NetworkChangeMonitor` dans `src/NetworkLimiter.Service/Resilience/NetworkChangeMonitor.cs` : abonnement aux changements d'adresse et d'adaptateur, reprise de veille, réouverture des handles si nécessaire, journalisation de chaque bascule
 
 ### Identité de processus
 
@@ -127,12 +127,12 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Déploiement minimal
 
-- [ ] T055 [P] Écrire `tools/register-windivert-dev.ps1` pour enregistrer le service pilote en développement, le service ouvrant ses handles avec `WINDIVERT_FLAG_NO_INSTALL`
+- [X] T055 [P] Écrire `tools/register-windivert-dev.ps1` pour enregistrer le service pilote en développement, le service ouvrant ses handles avec `WINDIVERT_FLAG_NO_INSTALL`
 - [ ] T056 Créer le squelette WiX v5 dans `src/NetworkLimiter.Installer/` : installation du service, **enregistrement du pilote WinDivert à l'installation** (R-011), pose des ACL de `%ProgramData%`. Placé en Phase 2 parce que les tests de US4 sur machine propre en dépendent ; conditions d'architecture et désinstallation restent en US5
 
 ### État de santé
 
-- [ ] T057 Implémenter `HealthState`, l'énumération exhaustive des raisons d'inactivité et le gestionnaire `GetHealth` dans `src/NetworkLimiter.Service/Health/`
+- [X] T057 Implémenter `HealthState`, l'énumération exhaustive des raisons d'inactivité et le gestionnaire `GetHealth` dans `src/NetworkLimiter.Service/Health/`
 
 **Checkpoint**: chaîne d'interception IPv4/IPv6, IPC sécurisé, persistance, résilience réseau et
 fail-open opérationnels. Les user stories peuvent démarrer.

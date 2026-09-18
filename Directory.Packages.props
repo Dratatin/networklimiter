@@ -21,6 +21,12 @@
   <ItemGroup Label="Hebergement du service">
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <!--
+      SystemEvents porte la notification de sortie de veille, indispensable a FR-036 :
+      au reveil, les handles d interception sont invalides et les regles doivent etre
+      reappliquees. Le type vit dans ce paquet depuis .NET Core, plus dans le framework.
+    -->
+    <PackageVersion Include="Microsoft.Win32.SystemEvents" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Journalisation (principe VI)">
