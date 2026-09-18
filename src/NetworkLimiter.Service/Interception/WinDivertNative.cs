@@ -146,6 +146,42 @@ internal static partial class WinDivertNative
     internal static partial bool SetParam(WinDivertHandle handle, WinDivertParam param, ulong value);
 
     /// <summary>
+    /// Reçoit un lot de paquets ou d'événements.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="addressLength"/> est exprimé en <b>octets</b>, pas en nombre d'entrées :
+    /// en entrée la taille du tampon, en sortie le nombre d'octets écrits. Le nombre
+    /// d'événements s'en déduit par division par la taille d'une adresse. Confondre les deux
+    /// conventions ferait lire un nombre d'événements erroné à chaque lot.
+    /// </remarks>
+    [LibraryImport(Library, EntryPoint = "WinDivertRecvEx", SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static unsafe partial bool RecvEx(
+        WinDivertHandle handle,
+        byte* packet,
+        uint packetLength,
+        uint* receivedLength,
+        ulong flags,
+        WinDivertAddress* address,
+        uint* addressLength,
+        nint overlapped);
+
+    /// <summary>Réinjecte un lot de paquets.</summary>
+    [LibraryImport(Library, EntryPoint = "WinDivertSendEx", SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static unsafe partial bool SendEx(
+        WinDivertHandle handle,
+        byte* packet,
+        uint packetLength,
+        uint* sentLength,
+        ulong flags,
+        WinDivertAddress* address,
+        uint addressLength,
+        nint overlapped);
+
+    /// <summary>
     /// Compile un filtre sans ouvrir de handle.
     /// </summary>
     /// <remarks>
