@@ -133,4 +133,24 @@ jobs:
           global-json-file: global.json
 
       - name: Verifier que Core ne depend pas de Windows et que les tests sont deterministes
-        run: dotnet test tests/NetworkLimiter.Core.Tests --filter Category=Determinism
+        # `dotnet test` ne considere PAS « zero test trouve » comme une erreur : il affiche
+        # « No test matches the given testcase filter » et sort en code 0. Ce job est donc
+        # reste vert sans rien verifier tant que les tests de categorie Determinism
+        # n'existaient pas. Une porte verte qui ne garde rien est pire qu'une porte absente,
+        # parce qu'on cesse de se poser la question.
+        shell: pwsh
+        run: |
+          $output = dotnet test tests/NetworkLimiter.Core.Tests --filter Category=Determinism 2>&1 | Out-String
+          Write-Host $output
+
+          if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::Le garde-fou de determinisme a echoue."
+              exit 1
+          }
+
+          if ($output -match 'No test matches|Aucun test ne correspond') {
+              Write-Host "::error::Aucun test de categorie 'Determinism' n'a ete trouve. Le garde-fou du principe III ne verifie rien."
+              exit 1
+          }
+
+          Write-Host "Garde-fou de determinisme execute."
