@@ -189,9 +189,10 @@
             </DockPanel>
 
             <!-- Éditeur, en superposition sur les deux colonnes -->
-            <Grid Grid.Column="0" Grid.ColumnSpan="3"
+            <Grid x:Name="EditorOverlay"
+                  Grid.Column="0" Grid.ColumnSpan="3"
                   Background="#99000000"
-                  Visibility="{Binding Editor, Converter={StaticResource TextToVisibility}}">
+                  Visibility="{Binding Editor, Converter={StaticResource NullToVisibility}}">
                 <views:RuleEditorView DataContext="{Binding Editor}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center" />

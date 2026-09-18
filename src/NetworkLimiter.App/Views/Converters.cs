@@ -36,6 +36,25 @@ public sealed class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("Conversion unidirectionnelle.");
 }
 
+/// <summary>Affiche un élément seulement si la valeur liée n'est pas <c>null</c>.</summary>
+/// <remarks>
+/// Distinct de <see cref="TextToVisibilityConverter"/>, et l'oubli de cette distinction a
+/// coûté un bug : la superposition de l'éditeur était liée par le convertisseur de texte à un
+/// modèle de vue. <c>value as string</c> rendait <c>null</c> pour tout objet non textuel, donc
+/// <c>Collapsed</c> en permanence — l'éditeur ne se serait jamais ouvert, et le bouton aurait
+/// paru inerte sans qu'aucune erreur ne soit signalée.
+/// </remarks>
+public sealed class NullToVisibilityConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is null ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException("Conversion unidirectionnelle.");
+}
+
 /// <summary>Affiche un élément seulement si le texte est renseigné.</summary>
 /// <remarks>
 /// Évite le piège classique d'un bandeau d'erreur qui occupe la place alors qu'il est vide :

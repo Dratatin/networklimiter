@@ -8,6 +8,7 @@
         <views:NotConverter x:Key="Not" />
         <views:RateUnitIndexConverter x:Key="RateUnitIndex" />
         <views:TextToVisibilityConverter x:Key="TextToVisibility" />
+        <views:NullToVisibilityConverter x:Key="NullToVisibility" />
         <views:BoolToVisibilityConverter x:Key="BoolToVisibility" />
         <views:BoolToVisibilityConverter x:Key="BoolToVisibilityInverted" Invert="True" />
 
