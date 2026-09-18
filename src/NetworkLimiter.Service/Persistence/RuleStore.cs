@@ -1,6 +1,7 @@
 using System.Text.Json;
 using NetworkLimiter.Contracts.Messages;
 using NetworkLimiter.Contracts.Serialization;
+using NetworkLimiter.Service.Safety;
 
 namespace NetworkLimiter.Service.Persistence;
 
@@ -34,7 +35,7 @@ public sealed record WriteResult(bool Ok, ErrorCode? Code, string? Message)
 /// que l'utilisateur a vus appliqués.
 /// </para>
 /// </remarks>
-public sealed class RuleStore
+public sealed class RuleStore : IRuleSource
 {
     private readonly ConfigStore _configStore;
     private PersistedConfig _config;

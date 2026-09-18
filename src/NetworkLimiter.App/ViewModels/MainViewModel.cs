@@ -68,6 +68,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty]
     private bool _interceptionAvailable = true;
 
+    [ObservableProperty]
+    private bool _suspended;
+
+    /// <summary>Libellé du bouton d'arrêt d'urgence, qui dit ce qu'il va faire.</summary>
+    /// <remarks>
+    /// Le libellé décrit l'<b>action</b>, jamais l'état. Un bouton marqué « Suspendu » laisse
+    /// l'utilisateur deviner si c'est un constat ou une commande — au moment précis où il veut
+    /// récupérer sa connexion sans réfléchir.
+    /// </remarks>
+    public string SuspensionLabel => Suspended
+        ? "Réappliquer les limites"
+        : "Tout suspendre";
+
+    partial void OnSuspendedChanged(bool value) => OnPropertyChanged(nameof(SuspensionLabel));
+
     /// <summary>Se connecte au service et démarre le rafraîchissement.</summary>
     public async Task StartAsync()
     {
@@ -165,10 +180,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Apps.Merge(state.ObservedApplications);
 
         InterceptionAvailable = state.InterceptionAvailable;
+        Suspended = state.Suspended;
 
-        Shell.StatusMessage = state.InterceptionAvailable
-            ? null
-            : "L'interception n'est pas opérationnelle : aucune limite n'est appliquée.";
+        // L'ordre des messages suit celui des causes : l'interception hors service prime sur
+        // la suspension, puisqu'elle rend cette derniere sans objet. Dire « suspendu » a
+        // quelqu'un dont le pilote n'a pas demarre l'enverrait chercher au mauvais endroit.
+        Shell.StatusMessage = (state.InterceptionAvailable, state.Suspended) switch
+        {
+            (false, _) => "L'interception n'est pas opérationnelle : aucune limite n'est appliquée.",
+            (true, true) => "Limitation suspendue. Vos règles sont conservées et seront réappliquées à la reprise.",
+            _ => null,
+        };
     }
 
     private void OnNotification(object? sender, MessageEnvelope message)
@@ -269,6 +291,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 .ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Suspend toute la limitation, ou la reprend (FR-024).
+    /// </summary>
+    /// <remarks>
+    /// L'arrêt d'urgence du produit. Rien n'est demandé à confirmer : quelqu'un dont la
+    /// connexion ne répond plus doit pouvoir la rendre en un clic, pas en deux. La reprise est
+    /// symétrique et les règles n'ont jamais été perdues.
+    /// </remarks>
+    [RelayCommand]
+    private async Task ToggleSuspensionAsync() =>
+        await SendWriteAsync(
+            MessageTypes.SetSuspended,
+            new SetSuspendedPayload { Suspended = !Suspended })
+            .ConfigureAwait(false);
 
     /// <summary>Relance l'interface avec élévation.</summary>
     [RelayCommand]

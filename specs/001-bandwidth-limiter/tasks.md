@@ -279,14 +279,14 @@ retour au débit nominal en < 5 s ; puis arrêter brutalement le service et vér
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T113 [P] [US5] Écrire les tests de suspension dans `tests/NetworkLimiter.Service.Tests/Safety/SuspensionTests.cs` : toutes limites levées en < 5 s, **règles conservées** pour réactivation
+- [X] T113 [P] [US5] Écrire les tests de suspension dans `tests/NetworkLimiter.Service.Tests/Safety/SuspensionTests.cs` : toutes limites levées en < 5 s, **règles conservées** pour réactivation
 - [ ] T114 [P] [US5] Écrire le test d'arrêt brutal dans `tests/NetworkLimiter.Integration.Tests/Safety/AbruptTerminationTests.cs` : `TerminateProcess` répété sur le service → trafic non limité à **100 %** des essais (SC-009)
 - [ ] T115 [P] [US5] Écrire le test de raison dans `tests/NetworkLimiter.Contracts.Tests/InactiveReasonTests.cs` : toute règle `Defined` porte **exactement une** raison d'inactivité ; une règle inactive sans raison fait échouer le contrat
 - [ ] T116 [P] [US5] Écrire le test de désinstallation dans `tests/NetworkLimiter.Integration.Tests/Installer/UninstallTests.cs` : zéro limite active, service pilote supprimé, `%ProgramData%\NetworkLimiter` supprimé, réseau identique à l'état d'origine (SC-010)
 
 ### Implementation for User Story 5
 
-- [ ] T117 [US5] Implémenter `SetSuspended` et le contournement du pipeline dans `src/NetworkLimiter.Service/Safety/SuspensionController.cs` (FR-024)
+- [X] T117 [US5] Implémenter `SetSuspended` et le contournement du pipeline dans `src/NetworkLimiter.Service/Safety/SuspensionController.cs` (FR-024)
 - [ ] T118 [US5] Implémenter le panneau d'état de santé dans `src/NetworkLimiter.App/Views/HealthView.xaml` : service joignable, pilote chargé, nombre de règles actives, **raison pour chaque règle inactive** (FR-026)
 - [ ] T119 [US5] Implémenter la détection d'adaptateur VPN et l'avertissement associé dans `src/NetworkLimiter.Service/Health/VpnDetector.cs` (FR-037, FR-040c) — détecter et avertir, jamais garantir
 - [ ] T120 [US5] Implémenter les messages de mode dégradé dans `src/NetworkLimiter.App/ViewModels/HealthViewModel.cs` : pilote absent, système hors matrice, configuration corrompue, chacun avec sa cause et son action corrective

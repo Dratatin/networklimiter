@@ -6,6 +6,7 @@ using NetworkLimiter.Service.Interception;
 using NetworkLimiter.Service.Ipc;
 using NetworkLimiter.Service.Ipc.Handlers;
 using NetworkLimiter.Service.Persistence;
+using NetworkLimiter.Service.Safety;
 using Serilog;
 using NetworkLimiter.Service.Health;
 using Xunit;
@@ -43,10 +44,76 @@ public sealed class RequestDispatcherTests : IDisposable
             new Core.Rules.RuleResolver(),
             new AlwaysExistsProbe());
 
+        Suspension = new SuspensionController(coordinator, _rules);
+
         _dispatcher = new RequestDispatcher(
             new RuleHandlers(_rules, Serilog.Core.Logger.None),
             new ServiceStateProvider(_rules, coordinator, () => RunningPaths),
+            Suspension,
             Serilog.Core.Logger.None);
+    }
+
+    private SuspensionController Suspension { get; }
+
+    [Fact]
+    public void LaSuspension_ExigeUneElevation()
+    {
+        MessageEnvelope response = _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(
+                MessageTypes.SetSuspended, new SetSuspendedPayload { Suspended = true }),
+            callerIsElevated: false);
+
+        response.Error!.Code.Should().Be(ErrorCode.ElevationRequired);
+
+        // Le refus doit precede l'effet : suspendre puis refuser laisserait le reseau sans
+        // limites au profit d'un appelant sans droits.
+        Suspension.IsSuspended.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaSuspension_EstAppliquee_EtDiffusee()
+    {
+        int broadcasts = 0;
+        _dispatcher.StateWritten += (_, _) => broadcasts++;
+
+        _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(
+                MessageTypes.SetSuspended, new SetSuspendedPayload { Suspended = true }),
+            callerIsElevated: true)
+            .Ok.Should().BeTrue();
+
+        Suspension.IsSuspended.Should().BeTrue();
+        broadcasts.Should().Be(1, "toutes les interfaces doivent voir que la limitation est levée");
+    }
+
+    [Fact]
+    public void LaReprise_RepasseParLeMemeChemin()
+    {
+        _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(
+                MessageTypes.SetSuspended, new SetSuspendedPayload { Suspended = true }),
+            callerIsElevated: true);
+
+        _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(
+                MessageTypes.SetSuspended, new SetSuspendedPayload { Suspended = false }),
+            callerIsElevated: true);
+
+        Suspension.IsSuspended.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LEtatRendu_PorteLaSuspension()
+    {
+        Suspension.Suspend();
+
+        MessageEnvelope response = _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(MessageTypes.GetState), callerIsElevated: false);
+
+        // Sans ce champ, une interface afficherait des règles « actives » alors qu'aucune ne
+        // s'applique — le mensonge le plus coûteux que cet outil puisse produire.
+        MessageSerializer.ReadPayload<GetStateResultPayload>(response)
+            .Suspended.Should().BeTrue();
     }
 
     private static IReadOnlySet<string> RunningPaths { get; } =

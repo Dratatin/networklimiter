@@ -111,6 +111,33 @@
                            FontWeight="SemiBold"
                            Margin="0,0,0,6" />
 
+                <!--
+                    Arrêt d'urgence (FR-024). En haut, séparé des commandes d'édition : c'est
+                    ce qu'on cherche quand plus rien ne marche, et il ne doit pas se confondre
+                    avec un bouton qui modifie une règle.
+                -->
+                <Border DockPanel.Dock="Top"
+                        Margin="0,0,0,8"
+                        Padding="8,6"
+                        Background="#F3F3F3"
+                        BorderBrush="#D9D9D9"
+                        BorderThickness="1">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right"
+                                Content="{Binding SuspensionLabel}"
+                                MinWidth="160"
+                                Padding="8,4"
+                                Command="{Binding ToggleSuspensionCommand}"
+                                IsEnabled="{Binding Shell.CanEdit}" />
+
+                        <TextBlock Text="Lever toutes les limites sans perdre vos règles"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.75"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,10,0" />
+                    </DockPanel>
+                </Border>
+
                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
                     <Button Content="Modifier"
                             MinWidth="90"

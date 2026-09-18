@@ -28,6 +28,7 @@ namespace NetworkLimiter.Contracts.Serialization;
 [JsonSerializable(typeof(GlobalLimitDto))]
 [JsonSerializable(typeof(ProfileDto))]
 [JsonSerializable(typeof(PersistedConfig))]
+[JsonSerializable(typeof(SetSuspendedPayload))]
 [JsonSerializable(typeof(ObservedAppDto))]
 [JsonSerializable(typeof(RuleStateDto))]
 [JsonSerializable(typeof(ProfileStateDto))]

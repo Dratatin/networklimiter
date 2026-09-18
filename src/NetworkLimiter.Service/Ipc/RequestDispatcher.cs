@@ -1,5 +1,6 @@
 using NetworkLimiter.Contracts.Messages;
 using NetworkLimiter.Service.Ipc.Handlers;
+using NetworkLimiter.Service.Safety;
 using ILogger = Serilog.ILogger;
 
 namespace NetworkLimiter.Service.Ipc;
@@ -24,18 +25,25 @@ public sealed class RequestDispatcher
 {
     private readonly RuleHandlers _ruleHandlers;
     private readonly IStateSource _state;
+    private readonly SuspensionController _suspension;
     private readonly ILogger _log;
 
     /// <summary>Crée le répartiteur.</summary>
     /// <exception cref="ArgumentNullException">Un argument est <c>null</c>.</exception>
-    public RequestDispatcher(RuleHandlers ruleHandlers, IStateSource state, ILogger log)
+    public RequestDispatcher(
+        RuleHandlers ruleHandlers,
+        IStateSource state,
+        SuspensionController suspension,
+        ILogger log)
     {
         ArgumentNullException.ThrowIfNull(ruleHandlers);
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(suspension);
         ArgumentNullException.ThrowIfNull(log);
 
         _ruleHandlers = ruleHandlers;
         _state = state;
+        _suspension = suspension;
         _log = log;
     }
 
@@ -98,6 +106,9 @@ public sealed class RequestDispatcher
             case MessageTypes.SetRuleEnabled:
                 return AfterWrite(_ruleHandlers.SetEnabled(request));
 
+            case MessageTypes.SetSuspended:
+                return AfterWrite(Suspend(request));
+
             default:
                 return MessageEnvelope.CreateError(
                     request.Id,
@@ -105,6 +116,46 @@ public sealed class RequestDispatcher
                     $"La commande « {request.Type} » n'est pas prise en charge par cette version " +
                     "du service.");
         }
+    }
+
+    /// <summary>
+    /// Suspend ou reprend la limitation.
+    /// </summary>
+    /// <remarks>
+    /// Traité ici plutôt que dans un gestionnaire dédié : c'est une bascule d'état sans
+    /// persistance ni validation de charge utile au-delà d'un booléen. Lui consacrer une classe
+    /// ajouterait une indirection sans rien à y mettre.
+    /// </remarks>
+    private MessageEnvelope Suspend(MessageEnvelope request)
+    {
+        SetSuspendedPayload payload;
+
+        try
+        {
+            payload = Contracts.Serialization.MessageSerializer
+                .ReadPayload<SetSuspendedPayload>(request);
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            return MessageEnvelope.CreateError(
+                request.Id, ErrorCode.ValidationFailed, $"Message illisible : {exception.Message}");
+        }
+
+        _suspension.Set(payload.Suspended);
+
+        // Journalise le geste : c'est une action de dernier recours, et savoir QUAND elle a eu
+        // lieu est la premiere chose qu'on cherche en reconstituant un incident.
+        _log.Warning(
+            payload.Suspended
+                ? "Limitation SUSPENDUE : toutes les limites sont levées, les règles sont conservées."
+                : "Limitation reprise : les règles conservées sont réappliquées.");
+
+        return new MessageEnvelope
+        {
+            Type = request.Type + MessageTypes.ResultSuffix,
+            Id = request.Id,
+            Ok = true,
+        };
     }
 
     private MessageEnvelope AfterWrite(MessageEnvelope response)

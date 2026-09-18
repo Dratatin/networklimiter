@@ -52,6 +52,7 @@ internal sealed class InterceptionWorker : BackgroundService
     private IpcListener? _listener;
     private StateBroadcaster? _broadcaster;
     private ServiceStateProvider? _stateProvider;
+    private SuspensionController? _suspension;
 
     private static readonly IReadOnlySet<string> EmptyPaths = new HashSet<string>(StringComparer.Ordinal);
 
@@ -245,9 +246,13 @@ internal sealed class InterceptionWorker : BackgroundService
                 _coordinator!,
                 () => _pipeline?.RunningPaths ?? EmptyPaths);
 
+            _suspension = new SuspensionController(_coordinator!, _ruleStore!);
+            _suspension.Changed += (_, _) => BroadcastState();
+
             var dispatcher = new RequestDispatcher(
                 new RuleHandlers(_ruleStore!, _log),
                 _stateProvider,
+                _suspension,
                 _log);
 
             _broadcaster = new StateBroadcaster();

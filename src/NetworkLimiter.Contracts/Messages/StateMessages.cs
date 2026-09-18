@@ -57,6 +57,20 @@ public sealed record ProfileStateDto
 }
 
 /// <summary>
+/// Demande de suspension ou de reprise globale (FR-024).
+/// </summary>
+/// <remarks>
+/// Un booléen explicite plutôt qu'une bascule : deux interfaces ouvertes en même temps
+/// enverraient des bascules qui s'annuleraient, et l'utilisateur constaterait que son bouton
+/// « suspendre » ne suspend rien une fois sur deux.
+/// </remarks>
+public sealed record SetSuspendedPayload
+{
+    /// <summary>Suspendre la limitation.</summary>
+    public required bool Suspended { get; init; }
+}
+
+/// <summary>
 /// Une application vue en train de communiquer.
 /// </summary>
 /// <remarks>
