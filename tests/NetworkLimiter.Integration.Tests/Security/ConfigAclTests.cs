@@ -251,7 +251,13 @@ public sealed class ConfigAclTests : IDisposable
         ConfigAcl.AclCheckResult result = ConfigAcl.EnsureSecured(_directory);
 
         result.WasCorrect.Should().BeFalse();
-        result.Diagnostic.Should().Contain("propriété");
+
+        // Asserté sur un champ structuré et non sur la prose du diagnostic : une assertion
+        // sur une phrase française casse à la première reformulation — ou, comme ici, sur une
+        // simple majuscule de début de phrase.
+        result.OwnershipReclaimed.Should().BeTrue();
+        result.Diagnostic.Should().NotBeNullOrWhiteSpace();
+
         ConfigAcl.IsOwnedByPrivilegedPrincipal(info.GetAccessControl()).Should().BeTrue();
     }
 
@@ -273,6 +279,13 @@ public sealed class ConfigAclTests : IDisposable
 
         result.WasCorrect.Should().BeFalse();
         result.Diagnostic.Should().NotBeNullOrWhiteSpace();
+
+        // Un relâchement de permissions n'est PAS un squattage : la propriété était correcte,
+        // seules les ACE avaient dérivé. Distinguer les deux permet de les journaliser à des
+        // niveaux différents — une tentative de contournement n'a pas le même poids qu'un
+        // outil de nettoyage trop zélé.
+        result.OwnershipReclaimed.Should().BeFalse();
+
         ConfigAcl.IsAlreadySecured(info.GetAccessControl()).Should().BeTrue();
     }
 }

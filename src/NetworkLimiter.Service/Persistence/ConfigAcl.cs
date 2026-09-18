@@ -57,8 +57,17 @@ public static class ConfigAcl
 {
     /// <summary>Résultat d'une vérification d'ACL.</summary>
     /// <param name="WasCorrect">Les permissions étaient déjà conformes.</param>
+    /// <param name="OwnershipReclaimed">
+    /// Le répertoire appartenait à un compte non privilégié et sa propriété a été reprise.
+    /// </param>
     /// <param name="Diagnostic">Description de la correction appliquée, le cas échéant.</param>
-    public sealed record AclCheckResult(bool WasCorrect, string? Diagnostic);
+    /// <remarks>
+    /// <paramref name="OwnershipReclaimed"/> est un champ distinct et non une nuance du
+    /// message : un squattage de répertoire n'est pas un simple relâchement de permissions,
+    /// c'est une tentative de contournement, et l'appelant doit pouvoir la journaliser à un
+    /// niveau différent sans analyser une phrase en français.
+    /// </remarks>
+    public sealed record AclCheckResult(bool WasCorrect, bool OwnershipReclaimed, string? Diagnostic);
 
     /// <summary>
     /// Applique les permissions attendues au répertoire, en corrigeant ce qui diverge.
@@ -75,7 +84,7 @@ public static class ConfigAcl
 
         if (IsAlreadySecured(security))
         {
-            return new AclCheckResult(WasCorrect: true, Diagnostic: null);
+            return new AclCheckResult(WasCorrect: true, OwnershipReclaimed: false, Diagnostic: null);
         }
 
         bool ownerWasWrong = !IsOwnedByPrivilegedPrincipal(security);
@@ -107,7 +116,7 @@ public static class ConfigAcl
             : $"Les permissions de « {directoryPath} » n'étaient pas conformes et ont été " +
               "rétablies : seuls SYSTEM et les administrateurs peuvent écrire.";
 
-        return new AclCheckResult(WasCorrect: false, Diagnostic: diagnostic);
+        return new AclCheckResult(WasCorrect: false, OwnershipReclaimed: ownerWasWrong, Diagnostic: diagnostic);
     }
 
     /// <summary>Construit les permissions attendues.</summary>
