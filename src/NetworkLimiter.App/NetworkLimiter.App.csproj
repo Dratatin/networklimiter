@@ -4,6 +4,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!--
+      Pour NotifyIcon seulement (zone de notification, T121). Livre avec le framework, donc
+      aucune dependance externe : l alternative, piloter Shell_NotifyIcon a la main, exigerait
+      une fenetre cachee, une procedure de fenetre et la gestion du redemarrage de l explorateur.
+    -->
+    <UseWindowsForms>true</UseWindowsForms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>

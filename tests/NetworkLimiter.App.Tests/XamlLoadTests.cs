@@ -203,6 +203,13 @@ public sealed class XamlLoadTests
     /// WPF n'admet qu'une instance d'<see cref="Application"/> par domaine ; en créer une
     /// seconde lève. Les tests xUnit d'une même classe partagent le processus, d'où ce garde.
     /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Reliability",
+        "CA2000:Dispose objects before losing scope",
+        Justification =
+            "L'application devient Application.Current et doit vivre aussi longtemps que le " +
+            "processus de test : WPF n'en admet qu'une, et la libérer rendrait les ressources " +
+            "introuvables pour les tests suivants.")]
     private static void EnsureApplicationResources()
     {
         if (Application.Current is not null)

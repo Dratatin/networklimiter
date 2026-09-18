@@ -65,6 +65,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>État de santé, et ce qu'il faut en faire.</summary>
     public HealthViewModel Health { get; } = new();
 
+    /// <summary>Ce que l'icône de zone de notification doit montrer.</summary>
+    [ObservableProperty]
+    private TrayPresentation _tray = TrayPresentation.Compose(
+        connected: false, suspended: false, interceptionActive: false, activeRuleCount: 0);
+
+    private static int ActiveProfileRuleCount(GetStateResultPayload state) =>
+        state.Profiles
+            .FirstOrDefault(profile => profile.Id == state.ActiveProfileId)?
+            .Rules.Count(rule => rule.Status == RuleApplicationStatus.Active)
+        ?? 0;
+
     [ObservableProperty]
     private RuleEditorSessionViewModel? _editor;
 
@@ -218,6 +229,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
         InterceptionAvailable = state.InterceptionAvailable;
         Suspended = state.Suspended;
+
+        Tray = TrayPresentation.Compose(
+            connected: Shell.ConnectionState == ConnectionState.Connected,
+            suspended: state.Suspended,
+            interceptionActive: state.InterceptionAvailable && !state.Suspended,
+            activeRuleCount: ActiveProfileRuleCount(state));
 
         // L'ordre des messages suit celui des causes : l'interception hors service prime sur
         // la suspension, puisqu'elle rend cette derniere sans objet. Dire « suspendu » a
