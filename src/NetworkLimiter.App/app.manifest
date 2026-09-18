@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+
+  <!--
+    FR-029 et principe I de la constitution : l'interface s'execute dans le contexte de
+    l'utilisateur courant, SANS elevation.
+
+    Le niveau ci-dessous est « asInvoker » et DOIT le rester. Un passage a
+    « requireAdministrator » ferait tourner toute l'interface, ses dependances et son
+    moteur de rendu avec des privileges eleves, et constitue un rejet de revue.
+
+    La modification d'une regle passe par une relance elevee ponctuelle du meme
+    executable (ElevationLauncher, tache T075), pas par l'elevation de ce processus.
+  -->
+
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 et Windows 11 : la matrice declaree dans plan.md. -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+
+</assembly>

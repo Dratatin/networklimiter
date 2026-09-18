@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NetworkLimiter.App/NetworkLimiter.App.csproj" />
+    <Project Path="src/NetworkLimiter.Contracts/NetworkLimiter.Contracts.csproj" />
+    <Project Path="src/NetworkLimiter.Core/NetworkLimiter.Core.csproj" />
+    <Project Path="src/NetworkLimiter.Service/NetworkLimiter.Service.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NetworkLimiter.App.Tests/NetworkLimiter.App.Tests.csproj" />
+    <Project Path="tests/NetworkLimiter.Contracts.Tests/NetworkLimiter.Contracts.Tests.csproj" />
+    <Project Path="tests/NetworkLimiter.Core.Tests/NetworkLimiter.Core.Tests.csproj" />
+    <Project Path="tests/NetworkLimiter.Integration.Tests/NetworkLimiter.Integration.Tests.csproj" />
+    <Project Path="tests/NetworkLimiter.Service.Tests/NetworkLimiter.Service.Tests.csproj" />
+    <Project Path="tests/NetworkLimiter.Throughput.Tests/NetworkLimiter.Throughput.Tests.csproj" />
+  </Folder>
+</Solution>

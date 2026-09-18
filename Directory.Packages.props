@@ -8,9 +8,9 @@
     d'attribut Version sur un PackageReference. Une montee de version est donc toujours
     un changement visible en revue, jamais un effet de bord d'une restauration.
 
-    ATTENTION : ces versions n'ont pas encore ete confrontees a un `dotnet restore`
-    (aucun SDK .NET n'etait installe lors de leur redaction). Elles doivent etre
-    confirmees a la premiere restauration reussie.
+    Toutes les versions ci-dessous ont ete confirmees par une restauration reussie le
+    2026-09-18 sur le SDK 10.0.401. Serilog.Sinks.EventLog est en 4.0.0 : la 5.0.0
+    n existe qu en preversion, et le projet n embarque aucune preversion.
   -->
 
   <PropertyGroup>
@@ -19,15 +19,15 @@
   </PropertyGroup>
 
   <ItemGroup Label="Hebergement du service">
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Journalisation (principe VI)">
-    <PackageVersion Include="Serilog" Version="4.2.0" />
-    <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
-    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageVersion Include="Serilog.Sinks.EventLog" Version="5.0.0" />
+    <PackageVersion Include="Serilog" Version="4.4.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="Serilog.Sinks.EventLog" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Interface">
@@ -36,9 +36,9 @@
   </ItemGroup>
 
   <ItemGroup Label="Tests">
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <!--
       FluentAssertions reste volontairement en 7.x : a partir de la 8.0, le paquet est
       passe sous licence Xceed, payante pour tout usage commercial. La 7.x demeure sous

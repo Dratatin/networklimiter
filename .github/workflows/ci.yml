@@ -61,13 +61,29 @@ jobs:
       - name: Tests unitaires et de contrat
         # Les tests d'integration et de debit exigent des privileges et du materiel
         # reseau : ils sont exclus ici et couverts par integration.yml.
-        run: >
-          dotnet test --no-build --configuration ${{ matrix.configuration }}
-          tests/NetworkLimiter.Core.Tests
-          tests/NetworkLimiter.Contracts.Tests
-          tests/NetworkLimiter.App.Tests
-          --collect:"XPlat Code Coverage"
-          --logger "trx;LogFileName=test-results-${{ matrix.configuration }}.trx"
+        #
+        # `dotnet test` n'accepte qu'un seul projet a la fois (MSB1008), d'ou la boucle
+        # plutot qu'une liste d'arguments.
+        shell: pwsh
+        run: |
+          $projects = @(
+              'tests/NetworkLimiter.Core.Tests'
+              'tests/NetworkLimiter.Contracts.Tests'
+              'tests/NetworkLimiter.App.Tests'
+          )
+          $failed = @()
+          foreach ($project in $projects) {
+              Write-Host "::group::$project"
+              dotnet test --no-build --configuration ${{ matrix.configuration }} $project `
+                  --collect:"XPlat Code Coverage" `
+                  --logger "trx;LogFileName=$(Split-Path $project -Leaf).trx"
+              if ($LASTEXITCODE -ne 0) { $failed += $project }
+              Write-Host "::endgroup::"
+          }
+          if ($failed.Count -gt 0) {
+              Write-Host "::error::Projets de test en echec : $($failed -join ', ')"
+              exit 1
+          }
 
       - name: Publier les resultats de test
         if: always()

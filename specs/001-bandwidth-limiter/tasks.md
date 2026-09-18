@@ -37,16 +37,16 @@ couche technique.
 
 **Purpose**: squelette de solution, épinglage des dépendances, garde-fous de build.
 
-- [ ] T001 Créer la solution `NetworkLimiter.sln` et l'arborescence `src/`, `tests/`, `tools/` conforme à plan.md
+- [X] T001 Créer la solution `NetworkLimiter.sln` et l'arborescence `src/`, `tests/`, `tools/` conforme à plan.md
 - [X] T002 [P] Créer `Directory.Build.props` : `TargetFramework=net10.0`, `Nullable=enable`, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`, `Deterministic=true`
 - [X] T003 [P] Créer `Directory.Packages.props` avec gestion centralisée des paquets et **versions épinglées exactes** (constitution : dépendances épinglées et auditées)
 - [X] T004 [P] Créer `.editorconfig` à la racine avec les règles d'analyse C# et le niveau d'avertissement en erreur
 - [X] T005 [P] Écrire `tools/restore-windivert.ps1` : téléchargement de WinDivert 2.2.2, **vérification de l'empreinte SHA-256 et de la signature Authenticode** avant placement dans l'arborescence de build ; échec dur si l'une des deux ne correspond pas
-- [ ] T006 [P] Créer `src/NetworkLimiter.Core/NetworkLimiter.Core.csproj` sans aucune référence à un assembly Windows
-- [ ] T007 [P] Créer `src/NetworkLimiter.Contracts/NetworkLimiter.Contracts.csproj`
-- [ ] T008 [P] Créer `src/NetworkLimiter.Service/NetworkLimiter.Service.csproj` (worker, `Microsoft.Extensions.Hosting.WindowsServices`)
-- [ ] T009 [P] Créer `src/NetworkLimiter.App/NetworkLimiter.App.csproj` (WPF, `UseWPF=true`) **sans** manifeste `requireAdministrator`
-- [ ] T010 [P] Créer les six projets de test sous `tests/` conformément à plan.md (xUnit + FluentAssertions)
+- [X] T006 [P] Créer `src/NetworkLimiter.Core/NetworkLimiter.Core.csproj` sans aucune référence à un assembly Windows
+- [X] T007 [P] Créer `src/NetworkLimiter.Contracts/NetworkLimiter.Contracts.csproj`
+- [X] T008 [P] Créer `src/NetworkLimiter.Service/NetworkLimiter.Service.csproj` (worker, `Microsoft.Extensions.Hosting.WindowsServices`)
+- [X] T009 [P] Créer `src/NetworkLimiter.App/NetworkLimiter.App.csproj` (WPF, `UseWPF=true`) **sans** manifeste `requireAdministrator`
+- [X] T010 [P] Créer les six projets de test sous `tests/` conformément à plan.md (xUnit + FluentAssertions)
 - [X] T011 [P] Créer `.github/workflows/ci.yml` : build, tests unitaires et de contrat, `dotnet list package --vulnerable --include-transitive` avec échec sur sévérité haute ou critique
 - [X] T012 [P] Créer `.github/workflows/integration.yml` : exécution des tests d'intégration sur une **VM de la matrice de compatibilité** — c'est la porte de fusion n° 3 de la constitution, aujourd'hui sans automatisation
 - [X] T013 [P] Créer `README.md` avec la matrice de compatibilité de plan.md et `THIRD-PARTY-NOTICES.md` contenant le texte de licence LGPL v3 de WinDivert

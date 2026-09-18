@@ -27,9 +27,9 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
     <!--
-      Fichiers de verrouillage NuGet : sans eux, `dotnet restore --locked-mode` en CI
-      echoue, et surtout le graphe transitif pourrait changer sans qu'aucune revue ne
-      le voie. La constitution exige des dependances epinglees ET auditees ; le verrou
+      Fichiers de verrouillage NuGet : sans eux, le mode verrouille de `dotnet restore`
+      en CI echoue, et surtout le graphe transitif pourrait changer sans qu'aucune revue
+      ne le voie. La constitution exige des dependances epinglees ET auditees ; le verrou
       est ce qui rend l'audit reproductible.
     -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -37,10 +37,10 @@
     <!--
       Seule l'architecture x64 est supportee : WinDivert ne publie aucun pilote ARM64
       et un pilote noyau ne s'execute pas sous l'emulation x64 (research.md, R-002).
+      Le RuntimeIdentifier est pose par les seuls projets executables, pas ici : sur une
+      bibliotheque il forcerait une restauration specifique au RID sans aucun benefice.
     -->
-    <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <RuntimeIdentifier Condition="'$(IsTestProject)' != 'true'">win-x64</RuntimeIdentifier>
 
     <!-- L'interop natif est confine au service ; ailleurs, unsafe est interdit. -->
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
