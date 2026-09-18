@@ -28,6 +28,34 @@ namespace NetworkLimiter.Service;
 [SupportedOSPlatform("windows")]
 internal static class RuleCommands
 {
+    /// <summary>
+    /// Exécute une commande en traduisant un refus d'accès en message utilisable.
+    /// </summary>
+    /// <remarks>
+    /// Sans élévation, la sécurisation du répertoire de données échoue. Laisser remonter
+    /// l'exception afficherait une trace de pile là où un « ouvrez un terminal administrateur »
+    /// suffit — et laisserait croire à un défaut du produit plutôt qu'à un manque de droits.
+    /// </remarks>
+    public static int Run(Func<int> command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        try
+        {
+            return command();
+        }
+        catch (Exception exception) when (
+            exception is ConfigNotSecurableException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine(exception.Message);
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(
+                "Cette commande modifie la configuration du service : ouvrez un terminal " +
+                "administrateur.");
+            return 77;
+        }
+    }
+
     /// <summary>Ajoute ou remplace une règle et rend un code de sortie.</summary>
     public static int AddRule(string[] args)
     {

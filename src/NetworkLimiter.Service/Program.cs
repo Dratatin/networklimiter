@@ -28,11 +28,11 @@ internal static class Program
         switch (args.Length > 0 ? args[0] : null)
         {
             case "--add-rule":
-                return RuleCommands.AddRule(args);
+                return RuleCommands.Run(() => RuleCommands.AddRule(args));
             case "--list-rules":
-                return RuleCommands.ListRules();
+                return RuleCommands.Run(RuleCommands.ListRules);
             case "--clear-rules":
-                return RuleCommands.ClearRules();
+                return RuleCommands.Run(RuleCommands.ClearRules);
             default:
                 break;
         }
