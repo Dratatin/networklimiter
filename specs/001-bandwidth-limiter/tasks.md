@@ -62,14 +62,14 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Primitives pures (Core)
 
-- [ ] T014 [P] Écrire les tests de `ISystemClock` et de l'horloge virtuelle dans `tests/NetworkLimiter.Core.Tests/Time/FakeClockTests.cs`
-- [ ] T015 [P] Implémenter `ISystemClock`, `SystemClock` et `FakeClock` dans `src/NetworkLimiter.Core/Time/`
-- [ ] T016 [P] Écrire les tests de bornes de débit dans `tests/NetworkLimiter.Core.Tests/Units/ByteRateTests.cs` : rejet à **10 239**, acceptation à **10 240**, acceptation à **1 073 741 824**, rejet à **1 073 741 825**, acceptation de `null` (illimité)
-- [ ] T017 [P] Implémenter le type valeur `ByteRate` et sa validation dans `src/NetworkLimiter.Core/Units/ByteRate.cs`
-- [ ] T018 [P] Écrire les tests de classification dans `tests/NetworkLimiter.Core.Tests/Classification/NetworkScopeTests.cs`, aux **bornes exactes** de chaque plage de R-006 : `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `169.254.0.0/16`, `224.0.0.0/4`, `255.255.255.255`, `::1`, `fe80::/10`, `fc00::/7`, `ff00::/8`, plus des adresses publiques adjacentes à chaque borne
-- [ ] T019 [P] Implémenter `NetworkScopeClassifier` (`Internet` / `Local` / `Loopback`) dans `src/NetworkLimiter.Core/Classification/NetworkScopeClassifier.cs`
-- [ ] T020 [P] Écrire les tests de normalisation de chemin dans `tests/NetworkLimiter.Core.Tests/Classification/PathNormalizerTests.cs` : **idempotence** `normalize(normalize(p)) == normalize(p)`, casse invariante, `\Device\HarddiskVolumeN\` → lettre de lecteur, jonctions et liens symboliques
-- [ ] T021 [P] Implémenter `PathNormalizer` dans `src/NetworkLimiter.Core/Classification/PathNormalizer.cs`
+- [X] T014 [P] Écrire les tests caractérisant le contrat d'horloge dans `tests/NetworkLimiter.Core.Tests/Time/VirtualClockTests.cs` : mesure de durée exacte, monotonie, progression uniquement sur demande explicite
+- [X] T015 [P] **Écart assumé** — adopter `TimeProvider` (BCL) et `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) au lieu d'écrire `ISystemClock` / `SystemClock` / `FakeClock`. Mêmes garanties de déterminisme, zéro abstraction maison à maintenir : le principe V demande de ne pas ajouter de couche là où le framework en fournit une éprouvée
+- [X] T016 [P] Écrire les tests de bornes de débit dans `tests/NetworkLimiter.Core.Tests/Units/ByteRateTests.cs` : rejet à **10 239**, acceptation à **10 240**, acceptation à **1 073 741 824**, rejet à **1 073 741 825**, acceptation de `null` (illimité)
+- [X] T017 [P] Implémenter le type valeur `ByteRate` et sa validation dans `src/NetworkLimiter.Core/Units/ByteRate.cs`
+- [X] T018 [P] Écrire les tests de classification dans `tests/NetworkLimiter.Core.Tests/Classification/NetworkScopeTests.cs`, aux **bornes exactes** de chaque plage de R-006 : `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `169.254.0.0/16`, `224.0.0.0/4`, `255.255.255.255`, `::1`, `fe80::/10`, `fc00::/7`, `ff00::/8`, plus des adresses publiques adjacentes à chaque borne
+- [X] T019 [P] Implémenter `NetworkScopeClassifier` (`Internet` / `Local` / `Loopback`) dans `src/NetworkLimiter.Core/Classification/NetworkScopeClassifier.cs`
+- [X] T020 [P] Écrire les tests de normalisation de chemin dans `tests/NetworkLimiter.Core.Tests/Classification/PathNormalizerTests.cs` : **idempotence** `normalize(normalize(p)) == normalize(p)`, casse invariante, `\Device\HarddiskVolumeN\` → lettre de lecteur, jonctions et liens symboliques
+- [X] T021 [P] Implémenter `PathNormalizer` dans `src/NetworkLimiter.Core/Classification/PathNormalizer.cs`
 
 ### Contrat IPC (Contracts)
 

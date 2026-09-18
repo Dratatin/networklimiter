@@ -46,6 +46,12 @@
     -->
     <PackageVersion Include="FluentAssertions" Version="7.2.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <!--
+      Horloge virtuelle officielle du framework. Le principe III exige une horloge
+      injectee et zero Thread.Sleep ; TimeProvider (BCL) plus FakeTimeProvider le
+      fournissent sans qu on ait a ecrire et maintenir notre propre abstraction.
+    -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
   </ItemGroup>
 
 </Project>

@@ -48,7 +48,14 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!--
+      InvariantGlobalization reste a false : c'est un reglage adapte a un service
+      conteneurise, pas a une application de bureau localisee. L'activer rendrait
+      CultureInfo.GetCultureInfo("fr-FR") indisponible, donc impossible d'afficher
+      « 1,5 Mo/s » avec le separateur decimal francais, et fermerait la porte a
+      l'ajout d'autres langues que la spec prevoit.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <NeutralLanguage>fr-FR</NeutralLanguage>
   </PropertyGroup>
 
