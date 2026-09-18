@@ -384,6 +384,34 @@ serveur tiers.
 **Alternative écartée** : mesurer sur la boucle locale. Impossible par construction — la boucle
 locale est exclue de la limitation.
 
+### Première mesure de bout en bout — 18/09/2026
+
+Hors banc, sur la machine de développement (Windows 11 build 26200 x64), contre
+`speed.cloudflare.com`. Ce n'est pas le protocole ci-dessus et cela ne le remplace pas : une
+mesure unique, sur un lien internet réel, sans fenêtre glissante ni écartement de la phase de
+convergence. Elle est consignée parce qu'elle établit un fait qui manquait — **la chaîne
+complète limite réellement du trafic**.
+
+| Grandeur | Valeur |
+|---|---|
+| Référence sans service | 4,40 Mo/s |
+| Plafond posé sur `curl.exe` | 200 Ko/s en descente, montée illimitée |
+| Débit mesuré par `curl` | **190,8 Ko/s** |
+| Écart au plafond | −4,6 % (tolérance FR-003 : 10 %) |
+
+Les compteurs d'étape confirment le mécanisme, et pas seulement le résultat :
+
+- `sans-regle + regle-trouvee = paquets` à chaque seconde — aucun paquet n'échappe au comptage ;
+- `passe + retarde = paquets` — aucun paquet n'est perdu en route ;
+- **zéro rejet**, conforme à FR-003c : le trafic TCP est temporisable, il ne doit jamais être
+  rejeté ;
+- sur ~219 paquets de `curl` par seconde, 146 retardés et 73 laissés passer — ces derniers sont
+  ses ACK sortants, que la règle ne plafonne pas.
+
+**Ce que cette mesure ne prouve pas**, et qui reste au banc de R-012 : la limitation en montée,
+le chemin de rejet (UDP en descente, FR-003a), le plafond global (US3), la non-affectation du
+trafic local (SC-014), et le comportement aux plafonds extrêmes de la matrice.
+
 ---
 
 ## Synthèse des points à arbitrer par le porteur du projet
