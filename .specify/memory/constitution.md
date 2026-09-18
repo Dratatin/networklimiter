@@ -17,6 +17,15 @@ Sections ajoutées :
 - Governance
 
 TODO différés : aucun.
+
+AMENDEMENT 1.0.0 → 1.0.1 (PATCH, 2026-09-18)
+Section « Contraintes techniques » : runtime .NET 8 → .NET 10 LTS, avec obligation de rester
+sur une version LTS sous support.
+Motif : .NET 8 atteint sa fin de support le 10/11/2026, soit moins de deux mois après la
+ratification. Livrer un service LocalSystem sur un runtime qui ne recevra plus de correctifs
+de sécurité contredit les exigences de sécurité de cette constitution.
+Impact : nul. Aucun code n'existe, aucune migration n'est nécessaire.
+Détail : specs/001-bandwidth-limiter/research.md, entrée R-001.
 -->
 
 # NetworkLimiter Constitution
@@ -143,7 +152,9 @@ pas limitée ? ». Sans cette réponse, le produit devient imprévisible et donc
 
 **Stack imposée** :
 
-- .NET 8 (LTS), C#, `nullable` activé et warnings traités en erreurs sur tous les projets.
+- .NET 10 (LTS, supporté jusqu'au 14/11/2028), C#, `nullable` activé et warnings traités en
+  erreurs sur tous les projets. Le runtime MUST rester une version LTS sous support ; l'entrée
+  en fin de support MUST être traitée comme une vulnérabilité, pas comme une dette différable.
 - Service Windows : worker `BackgroundService`, démarrage automatique différé.
 - Interface : WPF avec icône de zone de notification, exécutée sans élévation.
 - Interception : WinDivert, en liaison dynamique, version épinglée. Sa licence (LGPL/GPL)
@@ -210,4 +221,4 @@ dans la PR. Toute complexité non triviale MUST être justifiée dans la PR ; à
 être retirée. Les manquements constatés MUST être consignés et corrigés avant la release
 suivante.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-18 | **Last Amended**: 2026-09-18
+**Version**: 1.0.1 | **Ratified**: 2026-09-18 | **Last Amended**: 2026-09-18

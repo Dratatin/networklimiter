@@ -196,6 +196,10 @@ composant privilégié et vérifier le même retour au nominal.
 - **Plafond très bas** : une valeur inférieure à la taille d'un paquet réseau doit être soit
   refusée à la saisie avec un minimum documenté, soit tenir le débit annoncé sans rompre les
   connexions.
+- **Flux descendant sans contrôle de congestion** : jeu en ligne, visioconférence, flux vidéo en
+  UDP. Le plafond ne peut y être tenu que par rejet (FR-003a) ; l'utilisateur doit comprendre
+  que la limite se paie en pertes, sans quoi il conclura que l'outil dégrade son réseau au
+  hasard.
 - **Plafond très élevé** : une valeur supérieure au débit réel de la connexion ne doit produire
   aucun surcoût ni dégradation mesurable.
 - **Trafic système** : mises à jour Windows, résolution DNS, services système — leur soumission
@@ -227,7 +231,17 @@ composant privilégié et vérifier le même retour au nominal.
 - **FR-002**: Le système MUST appliquer une règle nouvellement créée ou modifiée en moins de
   5 secondes, sans redémarrer l'application cible ni interrompre ses connexions établies.
 - **FR-003**: Le système MUST respecter un plafond avec un écart mesuré n'excédant pas 10 % du
-  plafond, moyenné sur une fenêtre de 10 secondes.
+  plafond, moyenné sur une fenêtre de 10 secondes, pour le trafic montant tous protocoles
+  confondus et pour le trafic descendant des protocoles disposant d'un contrôle de congestion.
+- **FR-003a**: Pour le trafic descendant sans contrôle de congestion, le système MUST tenir le
+  plafond avec un écart n'excédant pas 20 %, moyenné sur la même fenêtre, en rejetant les
+  données excédentaires.
+- **FR-003b**: Lorsqu'un plafond est tenu par rejet de données, le système MUST le signaler
+  explicitement dans l'interface, à côté de la règle concernée, et MUST afficher la proportion
+  de données rejetées.
+- **FR-003c**: Le système MUST NOT rejeter de données pour tenir un plafond lorsque le débit
+  peut être contenu par temporisation. Le rejet est un dernier recours, jamais le mécanisme par
+  défaut.
 - **FR-004**: Le système MUST réappliquer automatiquement une règle lorsque l'application
   concernée est relancée, y compris après un redémarrage de la machine.
 - **FR-005**: Le système MUST couvrir l'ensemble des processus appartenant à une même
@@ -382,7 +396,9 @@ composant privilégié et vérifier le même retour au nominal.
   documentation.
 - **SC-002**: Le débit réel d'une application limitée reste dans une marge de 10 % du plafond
   demandé, mesuré sur une fenêtre de 10 secondes, pour tout plafond compris entre 100 Ko/s et
-  100 Mo/s.
+  100 Mo/s, en montant tous protocoles et en descendant sur protocole à contrôle de congestion.
+- **SC-002a**: En descendant sans contrôle de congestion, la marge est de 20 %, et la proportion
+  de données rejetées pour tenir le plafond est visible par l'utilisateur.
 - **SC-003**: Une limite créée, modifiée ou supprimée prend effet en moins de 5 secondes.
 - **SC-004**: La somme des débits de toutes les applications reste sous le plafond global dans
   la même marge de 10 %, avec au moins trois applications transférant simultanément.
