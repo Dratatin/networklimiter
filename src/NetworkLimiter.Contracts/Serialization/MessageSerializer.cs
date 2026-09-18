@@ -20,6 +20,11 @@ namespace NetworkLimiter.Contracts.Serialization;
 [JsonSerializable(typeof(ErrorInfo))]
 [JsonSerializable(typeof(HelloPayload))]
 [JsonSerializable(typeof(HelloResultPayload))]
+[JsonSerializable(typeof(AppIdentityDto))]
+[JsonSerializable(typeof(RuleDto))]
+[JsonSerializable(typeof(UpsertRulePayload))]
+[JsonSerializable(typeof(DeleteRulePayload))]
+[JsonSerializable(typeof(SetRuleEnabledPayload))]
 internal sealed partial class MessageJsonContext : JsonSerializerContext;
 
 /// <summary>
