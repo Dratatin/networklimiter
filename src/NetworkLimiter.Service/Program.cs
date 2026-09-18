@@ -14,6 +14,14 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        // Le diagnostic precede tout, y compris la verification de compatibilite : il doit
+        // pouvoir s'executer justement quand quelque chose ne va pas, et rendre compte de ce
+        // qui bloque plutot que de sortir en silence.
+        if (Array.Exists(args, arg => string.Equals(arg, "--diagnose", StringComparison.Ordinal)))
+        {
+            return Diagnostics.Run();
+        }
+
         // La verification de compatibilite precede TOUT le reste, journalisation comprise :
         // inutile de creer des repertoires et d'ouvrir des fichiers sur une machine ou le
         // service ne pourra de toute facon rien faire (FR-035, principe II).
