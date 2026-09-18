@@ -88,6 +88,9 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
         _log = log;
     }
 
+    /// <summary>Compteurs d'étape, pour savoir où la chaîne s'interrompt.</summary>
+    public PipelineCounters Counters { get; } = new();
+
     /// <summary>Chemins normalisés des processus vus récemment, pour l'état de santé.</summary>
     public IReadOnlySet<string> RunningPaths => _runningPaths;
 
@@ -217,8 +220,11 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
 
     private void HandleFlowEvent(in WinDivertAddress address)
     {
+        Counters.Add(PipelineCounter.FlowEvents);
+
         if (address.Layer != WinDivertLayer.Flow)
         {
+            Counters.Add(PipelineCounter.FlowWrongLayer);
             return;
         }
 
@@ -227,22 +233,27 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
 
         if (address.Event == WinDivertEvent.FlowDeleted)
         {
+            Counters.Add(PipelineCounter.FlowsDeleted);
             _flowTable.OnFlowDeleted(key);
             return;
         }
 
+        Counters.Add(PipelineCounter.FlowsEstablished);
         _flowTable.OnFlowEstablished(key, flow.EndpointId, flow.ProcessId);
 
         // Resout l'identite tout de suite : le processus peut disparaitre avant le premier
         // paquet, et on perdrait alors la seule occasion de connaitre son chemin.
         ResolvedProcess? process = _processResolver.Resolve(flow.ProcessId);
 
-        if (process is not null)
+        if (process is null)
         {
-            lock (_runningPaths)
-            {
-                _runningPaths.Add(process.NormalizedPath);
-            }
+            Counters.Add(PipelineCounter.FlowIdentityUnknown);
+            return;
+        }
+
+        lock (_runningPaths)
+        {
+            _runningPaths.Add(process.NormalizedPath);
         }
     }
 
@@ -341,10 +352,13 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
     {
         ReadOnlySpan<byte> packet = packets.AsSpan(slice.Offset, slice.Length);
 
+        Counters.Add(PipelineCounter.PacketsReceived);
+
         // Un paquet deja reinjecte par un autre outil WinDivert ne doit pas etre mis en forme
         // une seconde fois : son debit serait divise deux fois.
         if (address.Impostor || address.Loopback)
         {
+            Counters.Add(PipelineCounter.PacketsBypassed);
             Reinject(packet, address);
             return;
         }
@@ -353,6 +367,8 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
 
         if (header is null)
         {
+            Counters.Add(PipelineCounter.PacketsUnreadable);
+
             // Paquet illisible : on laisse passer. Le retenir serait pire que ne pas le
             // limiter (principe IV).
             Reinject(packet, address);
@@ -363,7 +379,14 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
         NetworkScope scope = NetworkScopeClassifier.Classify(
             direction == PacketDirection.Outbound ? header.DestinationAddress : header.SourceAddress);
 
+        if (scope != NetworkScope.Internet)
+        {
+            Counters.Add(PipelineCounter.ScopeExcluded);
+        }
+
         Guid? ruleId = ResolveRule(header, direction);
+
+        Counters.Add(ruleId is null ? PipelineCounter.RuleUnmatched : PipelineCounter.RuleMatched);
 
         // Le jeton est calcule une fois et transmis explicitement. Le deduire d'un champ
         // partage au moment de la mise en attente fonctionnerait par coincidence — tant que
@@ -382,11 +405,18 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
         switch (_shaper.Evaluate(request))
         {
             case ShapingOutcome.PassThrough:
+                Counters.Add(PipelineCounter.Passed);
+                Reinject(packet, address);
+                break;
+
             case ShapingOutcome.Send:
+                Counters.Add(PipelineCounter.Sent);
                 Reinject(packet, address);
                 break;
 
             case ShapingOutcome.Delay:
+                Counters.Add(PipelineCounter.Delayed);
+
                 // Le tampon de lot sera reutilise au prochain appel : le paquet retenu doit
                 // etre copie, sinon il serait ecrase avant sa reinjection.
                 _delayed[token] = (packet.ToArray(), address);
@@ -395,9 +425,11 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
             case ShapingOutcome.Drop:
                 // Ne rien faire : un paquet non reinjecte est perdu, ce qui EST le mecanisme
                 // de la limite pour le trafic sans controle de congestion (FR-003a).
+                Counters.Add(PipelineCounter.Dropped);
                 break;
 
             default:
+                Counters.Add(PipelineCounter.Passed);
                 Reinject(packet, address);
                 break;
         }
@@ -419,8 +451,11 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
         {
             // Course entre les deux couches : le paquet est arrive avant que son flux ne soit
             // connu. Il passe sans limitation.
+            Counters.Add(PipelineCounter.FlowUnmatched);
             return null;
         }
+
+        Counters.Add(PipelineCounter.FlowMatched);
 
         ResolvedProcess? process = _processResolver.Resolve(processId);
 

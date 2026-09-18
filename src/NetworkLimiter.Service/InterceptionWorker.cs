@@ -10,6 +10,7 @@ using NetworkLimiter.Service.Persistence;
 using NetworkLimiter.Service.ProcessIdentity;
 using NetworkLimiter.Service.Resilience;
 using NetworkLimiter.Service.Safety;
+using Serilog.Events;
 using ILogger = Serilog.ILogger;
 
 namespace NetworkLimiter.Service;
@@ -45,6 +46,7 @@ internal sealed class InterceptionWorker : BackgroundService
     private FlowTable.FlowTable? _flowTable;
     private RuleStore? _ruleStore;
     private string? _degradedReason;
+    private long[] _lastCounters = [];
 
     public InterceptionWorker(ILogger log, TimeProvider clock)
     {
@@ -213,6 +215,7 @@ internal sealed class InterceptionWorker : BackgroundService
 
     private void RunMaintenance()
     {
+        ReportCounters();
         _state?.CheckWatchdog();
 
         // Tous les flux ne produisent pas d'evenement de suppression : arret brutal d'un
@@ -231,6 +234,29 @@ internal sealed class InterceptionWorker : BackgroundService
         {
             _coordinator.InterceptionAvailable = false;
         }
+    }
+
+    /// <summary>
+    /// Publie le mouvement des compteurs d'étape depuis la dernière seconde.
+    /// </summary>
+    /// <remarks>
+    /// En <c>Debug</c>, car c'est une ligne par seconde dès qu'il y a du trafic. Silencieux
+    /// quand rien ne bouge : un service permanent ne doit pas remplir un journal pour dire
+    /// qu'il ne se passe rien.
+    /// </remarks>
+    private void ReportCounters()
+    {
+        if (_pipeline is null || !_log.IsEnabled(LogEventLevel.Debug))
+        {
+            return;
+        }
+
+        if (_pipeline.Counters.DescribeDelta(_lastCounters) is { } delta)
+        {
+            _log.Debug("Étapes : {Etapes}", delta);
+        }
+
+        _lastCounters = _pipeline.Counters.Snapshot();
     }
 
     private void OnConfigurationChanged(object? sender, PersistedConfig config)

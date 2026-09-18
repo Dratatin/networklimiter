@@ -51,7 +51,7 @@ internal static class Program
         }
 
         Directory.CreateDirectory(ServicePaths.LogDirectory);
-        ConfigureLogging();
+        ConfigureLogging(Array.Exists(args, arg => string.Equals(arg, "--verbose", StringComparison.Ordinal)));
 
         try
         {
@@ -86,11 +86,17 @@ internal static class Program
         }
     }
 
-    private static void ConfigureLogging()
+    private static void ConfigureLogging(bool verbose)
     {
         LoggerConfiguration configuration = new LoggerConfiguration()
-            .MinimumLevel.Information()
             .Enrich.FromLogContext();
+
+        // « Debug » publie les compteurs d'etape de la boucle, seconde par seconde. Hors
+        // diagnostic, c'est une ligne par seconde des qu'il y a du trafic : trop pour un
+        // service permanent, indispensable quand on cherche pourquoi une limite ne prend pas.
+        configuration = verbose
+            ? configuration.MinimumLevel.Debug()
+            : configuration.MinimumLevel.Information();
 
         // Lance a la main depuis un terminal, le service doit dire ce qu'il fait a l'ecran :
         // sans cela, la seule facon d'observer un demarrage est d'aller lire un fichier, ce
