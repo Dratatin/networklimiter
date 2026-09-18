@@ -80,13 +80,13 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Canal IPC et autorisation (Service)
 
-- [ ] T026 Écrire le test d'ACL dans `tests/NetworkLimiter.Service.Tests/Ipc/PipeSecurityTests.cs` : la DACL porte une **ACE de refus explicite sur `S-1-5-2` (NETWORK)** et sur `ANONYMOUS LOGON`, placées avant les ACE d'autorisation
-- [ ] T027 Implémenter `PipeServer` et sa `PipeSecurity` dans `src/NetworkLimiter.Service/Ipc/PipeServer.cs` : `\\.\pipe\NetworkLimiter.v1`, message-mode, 4 instances, délai d'inactivité 30 s
-- [ ] T028 Écrire les tests de poignée de main dans `tests/NetworkLimiter.Contracts.Tests/HandshakeTests.cs` : requête avant `Hello` → connexion fermée ; `protocolVersion` différent → `ProtocolVersionMismatch` puis fermeture ; `elevated` déclaré par le client **ignoré**
-- [ ] T029 Implémenter la poignée de main et la vérification de version dans `src/NetworkLimiter.Service/Ipc/HandshakeHandler.cs`
-- [ ] T030 Écrire les tests d'autorisation dans `tests/NetworkLimiter.Service.Tests/Ipc/AuthorizationTests.cs` : **chaque** message d'écriture émis sans élévation renvoie `ElevationRequired` **et ne laisse aucun changement persisté**
-- [ ] T031 Implémenter l'autorisation par `RunAsClient` + `WindowsPrincipal.IsInRole(WindowsBuiltInRole.Administrator)` dans `src/NetworkLimiter.Service/Ipc/CallerAuthorization.cs`, **évaluée à chaque message**, jamais mémorisée
-- [ ] T032 Implémenter le client IPC dans `src/NetworkLimiter.App/Ipc/PipeClient.cs` avec reconnexion et remontée d'état de connexion
+- [X] T026 Écrire le test d'ACL dans `tests/NetworkLimiter.Service.Tests/Ipc/PipeSecurityTests.cs` : la DACL porte une **ACE de refus explicite sur `S-1-5-2` (NETWORK)** et sur `ANONYMOUS LOGON`, placées avant les ACE d'autorisation
+- [X] T027 Implémenter `PipeServer` et sa `PipeSecurity` dans `src/NetworkLimiter.Service/Ipc/PipeServer.cs` : `\\.\pipe\NetworkLimiter.v1`, message-mode, 4 instances, délai d'inactivité 30 s
+- [X] T028 Écrire les tests de poignée de main dans `tests/NetworkLimiter.Contracts.Tests/HandshakeTests.cs` : requête avant `Hello` → connexion fermée ; `protocolVersion` différent → `ProtocolVersionMismatch` puis fermeture ; `elevated` déclaré par le client **ignoré**
+- [X] T029 Implémenter la poignée de main et la vérification de version dans `src/NetworkLimiter.Service/Ipc/HandshakeHandler.cs`
+- [X] T030 Écrire les tests d'autorisation dans `tests/NetworkLimiter.Service.Tests/Ipc/AuthorizationTests.cs` : **chaque** message d'écriture émis sans élévation renvoie `ElevationRequired` **et ne laisse aucun changement persisté**
+- [X] T031 Implémenter l'autorisation par `RunAsClient` + `WindowsPrincipal.IsInRole(WindowsBuiltInRole.Administrator)` dans `src/NetworkLimiter.Service/Ipc/CallerAuthorization.cs`, **évaluée à chaque message**, jamais mémorisée
+- [X] T032 Implémenter le client IPC dans `src/NetworkLimiter.App/Ipc/PipeClient.cs` avec reconnexion et remontée d'état de connexion
 
 ### Hôte de service, journalisation, compatibilité
 
