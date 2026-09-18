@@ -169,8 +169,8 @@ tools/
 └── lab/                              # Provisionnement des VM du banc de mesure
 ```
 
-**Structure Decision**: quatre projets de production, séparés par **frontière de privilège** et
-non par couche technique. `Core` ne référence pas Windows, ce qui rend le principe III
+**Structure Decision**: cinq projets de production — quatre projets de code plus l'installeur —
+séparés par **frontière de privilège** et non par couche technique. `Core` ne référence pas Windows, ce qui rend le principe III
 mécaniquement vérifiable : si un `using` Windows y apparaît, la compilation d'un test le
 détecte. `Contracts` est partagé entre le service et l'interface, ce qui garantit qu'un
 changement de protocole casse la compilation des deux côtés plutôt que de produire une
