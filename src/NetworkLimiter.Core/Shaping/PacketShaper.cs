@@ -62,14 +62,24 @@ public enum ShapingOutcome
 /// rend le réseau à l'utilisateur.
 /// </para>
 /// <para>
-/// Cette classe n'est pas sûre vis-à-vis des accès concurrents ; elle est utilisée depuis la
-/// seule boucle de mise en forme.
+/// Cette classe est <b>sûre vis-à-vis des accès concurrents</b> : la boucle réseau évalue et
+/// draine pendant que le coordinateur peut remplacer les plafonds depuis un autre thread, ce
+/// qu'exige FR-002. Elle a longtemps porté la mention inverse, restée vraie jusqu'au jour où
+/// le pipeline a pris deux threads sans que personne ne revienne la relire.
 /// </para>
 /// </remarks>
 public sealed class PacketShaper
 {
     private readonly TimeProvider _clock;
     private readonly Dictionary<Guid, DirectionalShaper> _byRule = [];
+
+    // La boucle reseau evalue et draine ; le coordinateur applique les regles depuis un autre
+    // thread des qu'une modification arrive. Les seaux interieurs ne sont atteignables qu'a
+    // travers ce dictionnaire, donc ce seul verrou les couvre tous.
+    //
+    // Un verrou dans le Core n'entame ni sa purete ni son determinisme : il ne consulte pas
+    // l'horloge, ne dort pas, et ne change aucun resultat observable.
+    private readonly Lock _gate = new();
 
     /// <summary>Crée un metteur en forme.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="clock"/> est <c>null</c>.</exception>
@@ -80,10 +90,28 @@ public sealed class PacketShaper
     }
 
     /// <summary>Nombre de règles ayant au moins un plafond actif.</summary>
-    public int ShapedRuleCount => _byRule.Count;
+    public int ShapedRuleCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _byRule.Count;
+            }
+        }
+    }
 
     /// <summary>Nombre total de paquets en attente, toutes règles confondues.</summary>
-    public int QueuedPacketCount => _byRule.Values.Sum(shaper => shaper.QueuedCount);
+    public int QueuedPacketCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _byRule.Values.Sum(shaper => shaper.QueuedCount);
+            }
+        }
+    }
 
     /// <summary>
     /// Remplace le jeu de plafonds.
@@ -98,6 +126,14 @@ public sealed class PacketShaper
     {
         ArgumentNullException.ThrowIfNull(rules);
 
+        lock (_gate)
+        {
+            ApplyRulesLocked(rules);
+        }
+    }
+
+    private void ApplyRulesLocked(IReadOnlyList<ShaperRule> rules)
+    {
         var seen = new HashSet<Guid>();
 
         foreach (ShaperRule rule in rules)
@@ -145,13 +181,17 @@ public sealed class PacketShaper
             return ShapingOutcome.PassThrough;
         }
 
-        if (request.RuleId is not { } ruleId ||
-            !_byRule.TryGetValue(ruleId, out DirectionalShaper? shaper))
+        if (request.RuleId is not { } ruleId)
         {
             return ShapingOutcome.PassThrough;
         }
 
-        return shaper.Evaluate(request, _clock.GetTimestamp());
+        lock (_gate)
+        {
+            return _byRule.TryGetValue(ruleId, out DirectionalShaper? shaper)
+                ? shaper.Evaluate(request, _clock.GetTimestamp())
+                : ShapingOutcome.PassThrough;
+        }
     }
 
     /// <summary>
@@ -162,14 +202,17 @@ public sealed class PacketShaper
     {
         ArgumentNullException.ThrowIfNull(ready);
 
-        int before = ready.Count;
-
-        foreach (DirectionalShaper shaper in _byRule.Values)
+        lock (_gate)
         {
-            shaper.DrainReady(ready);
-        }
+            int before = ready.Count;
 
-        return ready.Count - before;
+            foreach (DirectionalShaper shaper in _byRule.Values)
+            {
+                shaper.DrainReady(ready);
+            }
+
+            return ready.Count - before;
+        }
     }
 
     /// <summary>
@@ -183,16 +226,24 @@ public sealed class PacketShaper
     {
         ArgumentNullException.ThrowIfNull(released);
 
-        released.AddRange(_released);
-        int count = _released.Count;
-        _released.Clear();
+        lock (_gate)
+        {
+            released.AddRange(_released);
+            int count = _released.Count;
+            _released.Clear();
 
-        return count;
+            return count;
+        }
     }
 
     /// <summary>Nombre de paquets rejetés pour une règle donnée.</summary>
-    public long GetDroppedPackets(Guid ruleId) =>
-        _byRule.TryGetValue(ruleId, out DirectionalShaper? shaper) ? shaper.DroppedPackets : 0;
+    public long GetDroppedPackets(Guid ruleId)
+    {
+        lock (_gate)
+        {
+            return _byRule.TryGetValue(ruleId, out DirectionalShaper? shaper) ? shaper.DroppedPackets : 0;
+        }
+    }
 
     /// <summary>
     /// Libère tous les paquets en attente et oublie les plafonds.
@@ -205,14 +256,17 @@ public sealed class PacketShaper
     {
         ArgumentNullException.ThrowIfNull(released);
 
-        foreach (DirectionalShaper shaper in _byRule.Values)
+        lock (_gate)
         {
-            shaper.ReleaseAll(released);
-        }
+            foreach (DirectionalShaper shaper in _byRule.Values)
+            {
+                shaper.ReleaseAll(released);
+            }
 
-        released.AddRange(_released);
-        _released.Clear();
-        _byRule.Clear();
+            released.AddRange(_released);
+            _released.Clear();
+            _byRule.Clear();
+        }
     }
 
     /// <summary>Les deux sens d'une règle : un seau et une file par direction.</summary>

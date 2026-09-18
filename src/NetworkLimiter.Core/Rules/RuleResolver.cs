@@ -61,11 +61,20 @@ public sealed record RuleMatch(Guid RuleId, RuleMatchMode Mode);
 /// </remarks>
 public sealed class RuleResolver
 {
-    private readonly Dictionary<string, RuleTarget> _byPath =
-        new(StringComparer.Ordinal);
+    /// <summary>Jeu de règles indexé, remplacé d'un bloc et jamais modifié en place.</summary>
+    private sealed record Snapshot(
+        Dictionary<string, RuleTarget> ByPath,
+        Dictionary<string, List<RuleTarget>> FallbackByName)
+    {
+        public static Snapshot Empty => new(new(StringComparer.Ordinal), new(StringComparer.Ordinal));
+    }
 
-    private readonly Dictionary<string, List<RuleTarget>> _fallbackByName =
-        new(StringComparer.Ordinal);
+    // Publication par echange de reference plutot que par verrou. La resolution est sur le
+    // chemin par paquet et n'ecrit rien ; les mises a jour sont rares. Surtout, cela donne une
+    // garantie qu'un verrou autour de dictionnaires modifiables ne donnerait pas aussi
+    // simplement : un lecteur voit soit l'ancien jeu complet, soit le nouveau complet, jamais
+    // un jeu a demi construit — ce qui reviendrait a appliquer un plafond jamais configure.
+    private volatile Snapshot _snapshot = Snapshot.Empty;
 
     /// <summary>Remplace le jeu de règles courant.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="rules"/> est <c>null</c>.</exception>
@@ -73,8 +82,8 @@ public sealed class RuleResolver
     {
         ArgumentNullException.ThrowIfNull(rules);
 
-        _byPath.Clear();
-        _fallbackByName.Clear();
+        Dictionary<string, RuleTarget> byPath = new(StringComparer.Ordinal);
+        Dictionary<string, List<RuleTarget>> fallbackByName = new(StringComparer.Ordinal);
 
         foreach (RuleTarget rule in rules)
         {
@@ -85,16 +94,16 @@ public sealed class RuleResolver
                 continue;
             }
 
-            _byPath[rule.Target.ExecutablePath] = rule;
+            byPath[rule.Target.ExecutablePath] = rule;
 
             // Seules les regles dont le chemin a disparu alimentent le repli. Une regle dont
             // le chemin existe encore ne doit surtout pas capturer les homonymes d'ailleurs.
             if (!rule.TargetPathExists)
             {
-                if (!_fallbackByName.TryGetValue(rule.Target.ExecutableName, out List<RuleTarget>? candidates))
+                if (!fallbackByName.TryGetValue(rule.Target.ExecutableName, out List<RuleTarget>? candidates))
                 {
                     candidates = [];
-                    _fallbackByName[rule.Target.ExecutableName] = candidates;
+                    fallbackByName[rule.Target.ExecutableName] = candidates;
                 }
 
                 candidates.Add(rule);
@@ -103,14 +112,17 @@ public sealed class RuleResolver
 
         // Ordre deterministe pour le repli : a candidats multiples, le meme processus doit
         // toujours tomber sur la meme regle, d'une execution a l'autre.
-        foreach (List<RuleTarget> candidates in _fallbackByName.Values)
+        foreach (List<RuleTarget> candidates in fallbackByName.Values)
         {
             candidates.Sort((left, right) => left.RuleId.CompareTo(right.RuleId));
         }
+
+        // Publication : a partir d'ici, et pas avant, les lecteurs voient le nouveau jeu.
+        _snapshot = new Snapshot(byPath, fallbackByName);
     }
 
     /// <summary>Nombre de règles actives.</summary>
-    public int ActiveRuleCount => _byPath.Count;
+    public int ActiveRuleCount => _snapshot.ByPath.Count;
 
     /// <summary>
     /// Cherche la règle qui vise un processus observé.
@@ -121,12 +133,17 @@ public sealed class RuleResolver
     {
         ArgumentNullException.ThrowIfNull(observed);
 
-        if (_byPath.TryGetValue(observed.ExecutablePath, out RuleTarget? exact))
+        // Lu une seule fois : les deux recherches doivent porter sur le MEME jeu de regles.
+        // Relire le champ entre les deux pourrait apparier un repli d'un jeu contre un chemin
+        // exact d'un autre.
+        Snapshot snapshot = _snapshot;
+
+        if (snapshot.ByPath.TryGetValue(observed.ExecutablePath, out RuleTarget? exact))
         {
             return new RuleMatch(exact.RuleId, RuleMatchMode.ExactPath);
         }
 
-        if (_fallbackByName.TryGetValue(observed.ExecutableName, out List<RuleTarget>? candidates) &&
+        if (snapshot.FallbackByName.TryGetValue(observed.ExecutableName, out List<RuleTarget>? candidates) &&
             candidates.Count > 0)
         {
             return new RuleMatch(candidates[0].RuleId, RuleMatchMode.FallbackName);

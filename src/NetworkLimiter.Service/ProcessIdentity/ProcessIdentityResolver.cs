@@ -58,6 +58,12 @@ public sealed class ProcessIdentityResolver
     private readonly Dictionary<uint, ResolvedProcess> _cache = [];
     private readonly int _maxEntries;
 
+    // Les deux boucles d'interception resolvent des identites en parallele : celle des flux a
+    // l'ouverture, celle du reseau a chaque paquet. Sans verrou, ce dictionnaire se corrompt —
+    // constate en execution reelle, la boucle des flux est morte sur « a concurrent update was
+    // performed on this collection ».
+    private readonly Lock _gate = new();
+
     /// <summary>Crée un résolveur.</summary>
     /// <exception cref="ArgumentNullException">Un argument est <c>null</c>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxEntries"/> n'est pas positif.</exception>
@@ -76,7 +82,16 @@ public sealed class ProcessIdentityResolver
     }
 
     /// <summary>Nombre d'entrées en cache.</summary>
-    public int CacheCount => _cache.Count;
+    public int CacheCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _cache.Count;
+            }
+        }
+    }
 
     /// <summary>
     /// Résout l'identité d'un processus.
@@ -87,19 +102,25 @@ public sealed class ProcessIdentityResolver
     /// </returns>
     public ResolvedProcess? Resolve(uint processId)
     {
+        // Appel systeme hors verrou, deliberement : le verrou protege le cache, pas le noyau.
+        // Le tenir pendant un appel systeme serialiserait les deux boucles d'interception sur
+        // Windows, ce qui est exactement ce que la separation en deux threads evite.
         if (!_provider.TryGetProcessInfo(processId, out ProcessInfo? info) || info is null)
         {
             // Le processus a disparu entre l'evenement de flux et cette resolution, ou il
             // est protege. On oublie toute entree de cache : la conserver reviendrait a
             // attribuer du trafic a un processus qui n'existe plus.
-            _cache.Remove(processId);
+            Forget(processId);
             return null;
         }
 
-        if (_cache.TryGetValue(processId, out ResolvedProcess? cached) &&
-            cached.StartTime == info.StartTime)
+        lock (_gate)
         {
-            return cached;
+            if (_cache.TryGetValue(processId, out ResolvedProcess? cached) &&
+                cached.StartTime == info.StartTime)
+            {
+                return cached;
+            }
         }
 
         // Soit l'entree est absente, soit son heure de demarrage differe : l'identifiant a
@@ -116,27 +137,47 @@ public sealed class ProcessIdentityResolver
         {
             // Chemin vide ou illisible : on refuse d'inventer une identite. Le trafic reste
             // non limite.
-            _cache.Remove(processId);
+            Forget(processId);
             return null;
         }
 
         var resolved = new ResolvedProcess(
             processId, info.StartTime, normalizedPath, executableName, info.IsPackaged);
 
-        if (_cache.Count >= _maxEntries && !_cache.ContainsKey(processId))
+        lock (_gate)
         {
-            EvictArbitrary();
+            // Deux boucles peuvent resoudre le meme identifiant en meme temps et inscrire
+            // toutes deux : sans consequence, elles produisent la meme valeur a partir des
+            // memes informations. Verrouiller la resolution entiere pour l'eviter couterait
+            // un appel systeme serialise afin de ne rien gagner.
+            if (_cache.Count >= _maxEntries && !_cache.ContainsKey(processId))
+            {
+                EvictArbitrary();
+            }
+
+            _cache[processId] = resolved;
         }
 
-        _cache[processId] = resolved;
         return resolved;
     }
 
     /// <summary>Retire une entrée du cache, par exemple à la disparition d'un processus.</summary>
-    public void Forget(uint processId) => _cache.Remove(processId);
+    public void Forget(uint processId)
+    {
+        lock (_gate)
+        {
+            _cache.Remove(processId);
+        }
+    }
 
     /// <summary>Vide le cache.</summary>
-    public void Clear() => _cache.Clear();
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _cache.Clear();
+        }
+    }
 
     private void EvictArbitrary()
     {

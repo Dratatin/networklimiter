@@ -34,8 +34,11 @@ public readonly record struct FlowKey(
 /// pas », jamais par une supposition : le pipeline réinjecte alors le paquet sans limitation.
 /// </para>
 /// <para>
-/// Cette classe n'est pas sûre vis-à-vis des accès concurrents ; elle est utilisée depuis la
-/// seule boucle d'interception.
+/// Cette classe est <b>sûre vis-à-vis des accès concurrents</b>. Elle a longtemps porté la
+/// mention inverse — « utilisée depuis la seule boucle d'interception » — qui était vraie à
+/// l'écriture et a cessé de l'être le jour où le pipeline a pris deux threads. Personne n'est
+/// revenu la corriger, et la couche réseau a consulté la table pendant que la couche flux
+/// l'alimentait. Noter une hypothèse ne la protège pas : seul un verrou le fait.
 /// </para>
 /// </remarks>
 public sealed class FlowTable
@@ -43,6 +46,10 @@ public sealed class FlowTable
     private readonly Dictionary<FlowKey, FlowEntry> _entries;
     private readonly TimeProvider _clock;
     private readonly int _maxEntries;
+
+    // Trois threads touchent cette table : la boucle des flux l'alimente, la boucle reseau la
+    // consulte — en ecrivant, voir TryGetProcessId — et la maintenance la purge.
+    private readonly Lock _gate = new();
 
     /// <summary>Crée une table de flux.</summary>
     /// <param name="clock">Horloge, injectée pour rendre la purge testable sans attente réelle.</param>
@@ -60,25 +67,43 @@ public sealed class FlowTable
     }
 
     /// <summary>Nombre de flux connus.</summary>
-    public int Count => _entries.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _entries.Count;
+            }
+        }
+    }
 
     /// <summary>Enregistre un flux établi.</summary>
     public void OnFlowEstablished(FlowKey key, ulong endpointId, uint processId)
     {
-        // Les ports sont reutilises : un quintuplet identique peut appartenir a un autre
-        // processus quelques instants plus tard. Ecraser est donc le comportement correct —
-        // conserver l'ancien attribuerait le trafic a la mauvaise application, et lui
-        // appliquerait la mauvaise limite.
-        _entries[key] = new FlowEntry(endpointId, processId, _clock.GetTimestamp());
-
-        if (_entries.Count > _maxEntries)
+        lock (_gate)
         {
-            EvictOldest();
+            // Les ports sont reutilises : un quintuplet identique peut appartenir a un autre
+            // processus quelques instants plus tard. Ecraser est donc le comportement correct —
+            // conserver l'ancien attribuerait le trafic a la mauvaise application, et lui
+            // appliquerait la mauvaise limite.
+            _entries[key] = new FlowEntry(endpointId, processId, _clock.GetTimestamp());
+
+            if (_entries.Count > _maxEntries)
+            {
+                EvictOldest();
+            }
         }
     }
 
     /// <summary>Retire un flux supprimé.</summary>
-    public void OnFlowDeleted(FlowKey key) => _entries.Remove(key);
+    public void OnFlowDeleted(FlowKey key)
+    {
+        lock (_gate)
+        {
+            _entries.Remove(key);
+        }
+    }
 
     /// <summary>
     /// Cherche le processus propriétaire d'un flux.
@@ -86,19 +111,25 @@ public sealed class FlowTable
     /// <returns><c>false</c> si le flux est inconnu ; l'appelant laisse alors passer sans limiter.</returns>
     public bool TryGetProcessId(FlowKey key, out uint processId)
     {
-        if (!_entries.TryGetValue(key, out FlowEntry entry))
+        // Cette methode porte un nom de lecture mais ECRIT : elle rafraichit la date de
+        // derniere vue. C'est ce qui la rendait particulierement dangereuse sans verrou — un
+        // appelant pouvait raisonnablement la croire sans effet, alors qu'elle mute la table
+        // a chaque paquet, depuis la boucle reseau, pendant que la boucle des flux mute aussi.
+        lock (_gate)
         {
-            processId = 0;
-            return false;
+            if (!_entries.TryGetValue(key, out FlowEntry entry))
+            {
+                processId = 0;
+                return false;
+            }
+
+            // Un flux long mais actif — telechargement, visioconference — ne doit pas etre
+            // purge sous pretexte que son etablissement est ancien.
+            _entries[key] = entry with { LastSeenTimestamp = _clock.GetTimestamp() };
+
+            processId = entry.ProcessId;
+            return true;
         }
-
-        // Rafraichit la date de derniere vue : un flux long mais actif — telechargement,
-        // visioconference — ne doit pas etre purge sous pretexte que son etablissement
-        // est ancien.
-        _entries[key] = entry with { LastSeenTimestamp = _clock.GetTimestamp() };
-
-        processId = entry.ProcessId;
-        return true;
     }
 
     /// <summary>
@@ -112,27 +143,30 @@ public sealed class FlowTable
     /// <returns>Nombre d'entrées retirées.</returns>
     public int PurgeStale(TimeSpan maxAge)
     {
-        List<FlowKey>? expired = null;
-
-        foreach ((FlowKey key, FlowEntry entry) in _entries)
+        lock (_gate)
         {
-            if (_clock.GetElapsedTime(entry.LastSeenTimestamp) > maxAge)
+            List<FlowKey>? expired = null;
+
+            foreach ((FlowKey key, FlowEntry entry) in _entries)
             {
-                (expired ??= []).Add(key);
+                if (_clock.GetElapsedTime(entry.LastSeenTimestamp) > maxAge)
+                {
+                    (expired ??= []).Add(key);
+                }
             }
-        }
 
-        if (expired is null)
-        {
-            return 0;
-        }
+            if (expired is null)
+            {
+                return 0;
+            }
 
-        foreach (FlowKey key in expired)
-        {
-            _entries.Remove(key);
-        }
+            foreach (FlowKey key in expired)
+            {
+                _entries.Remove(key);
+            }
 
-        return expired.Count;
+            return expired.Count;
+        }
     }
 
     /// <summary>
@@ -142,7 +176,13 @@ public sealed class FlowTable
     /// Appelée à la fermeture des handles : les flux connus n'ont plus de sens une fois
     /// l'interception arrêtée, et les conserver ferait repartir sur un état périmé.
     /// </remarks>
-    public void Clear() => _entries.Clear();
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _entries.Clear();
+        }
+    }
 
     private void EvictOldest()
     {
