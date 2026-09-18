@@ -201,6 +201,7 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
                 if (count == 0)
                 {
                     // Handle ferme ou arret en cours : la boucle se termine proprement.
+                    ReportLoopExit("flux");
                     break;
                 }
 
@@ -308,6 +309,7 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
 
                 if (count == 0)
                 {
+                    ReportLoopExit("réseau");
                     break;
                 }
 
@@ -520,6 +522,31 @@ public sealed class ShapingPipeline : IHandleCloser, IDisposable
             // Le handle est deja ferme : le paquet est perdu, mais le trafic est libre. C'est
             // le compromis acceptable, l'inverse ne l'est pas.
         }
+    }
+
+    /// <summary>
+    /// Signale la fin d'une boucle de réception.
+    /// </summary>
+    /// <remarks>
+    /// Se taire ici a coûté une session de diagnostic entière : la couche <c>FLOW</c> s'était
+    /// arrêtée sans un mot, pendant que le service continuait d'annoncer « interception
+    /// active ». Une boucle morte qui n'est pas dite est une limitation qui ne s'applique
+    /// jamais, sans que rien ne l'explique. Pendant un arrêt demandé, c'est attendu et la
+    /// mention reste discrète ; hors arrêt, c'est un avertissement.
+    /// </remarks>
+    private void ReportLoopExit(string loop)
+    {
+        if (_running)
+        {
+            _log.Warning(
+                "Boucle {Loop} terminée alors que l'interception est censée être active. " +
+                "Les paquets ne seront plus attribués.",
+                loop);
+
+            return;
+        }
+
+        _log.Debug("Boucle {Loop} terminée sur fermeture du handle.", loop);
     }
 
     private void Fail(Exception exception, string loop)

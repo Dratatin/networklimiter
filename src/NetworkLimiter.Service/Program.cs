@@ -33,6 +33,8 @@ internal static class Program
                 return RuleCommands.Run(RuleCommands.ListRules);
             case "--clear-rules":
                 return RuleCommands.Run(RuleCommands.ClearRules);
+            case "--probe-flow":
+                return FlowProbe.Run(args);
             default:
                 break;
         }
