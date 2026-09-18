@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.Versioning;
-using System.ServiceProcess;
 using NetworkLimiter.Service.Interception;
 
 namespace NetworkLimiter.Service;
@@ -29,8 +28,6 @@ namespace NetworkLimiter.Service;
 [SupportedOSPlatform("windows")]
 internal static class Diagnostics
 {
-    private const string DriverServiceName = "WinDivert";
-
     /// <summary>Exécute le diagnostic et rend un code de sortie.</summary>
     /// <returns><c>0</c> si l'interception est possible, sinon un code non nul.</returns>
     public static int Run()
@@ -132,22 +129,35 @@ internal static class Diagnostics
 
     private static bool CheckDriverService()
     {
-        try
-        {
-            using var service = new ServiceController(DriverServiceName);
-            ServiceControllerStatus status = service.Status;
+        var driver = new WinDivertDriverService();
+        DriverServiceState state = driver.GetState();
 
-            // « Arrete » est l'etat NORMAL : le pilote est enregistre a demarrage a la
-            // demande et ne se charge qu'a l'ouverture d'un handle.
-            Report("Service pilote WinDivert", true, $"enregistre, etat : {status}", null);
-            return true;
-        }
-        catch (InvalidOperationException)
+        if (state == DriverServiceState.NotRegistered)
         {
             Report("Service pilote WinDivert", false, "non enregistre",
                    "Executez ./tools/register-windivert-dev.ps1 depuis une invite elevee.");
             return false;
         }
+
+        if (state == DriverServiceState.Running)
+        {
+            Report("Service pilote WinDivert", true, "charge", null);
+            return true;
+        }
+
+        // Le pilote est enregistre a demarrage « a la demande ». Ouvrir un peripherique ne
+        // declenche PAS le chargement d'un service noyau : il faut le demarrer explicitement.
+        // C'est ici que se decouvre un refus de chargement — signature, strategie de
+        // securite — avec son vrai code d'erreur.
+        Console.WriteLine("       Le pilote est enregistre mais arrete : demarrage...");
+
+        DriverStartResult result = driver.EnsureRunning();
+
+        Report("Service pilote WinDivert", result.Started,
+               result.Started ? "demarre et charge" : "demarrage impossible",
+               result.Diagnostic);
+
+        return result.Started;
     }
 
     private static bool TryOpen(string label, Func<WinDivertInterceptor> factory)
@@ -204,7 +214,9 @@ internal static class Diagnostics
 
         1058 => "Le service du pilote est desactive.",
 
-        1060 => "Le service du pilote n'existe pas. Executez ./tools/register-windivert-dev.ps1.",
+        1060 => "Le pilote n'est pas charge. Si le service est pourtant enregistre, c'est " +
+               "qu'il n'a pas ete demarre : un service noyau « a la demande » ne se charge pas " +
+               "tout seul a l'ouverture d'un peripherique.",
 
         654 => "Une version differente du pilote a ete chargee puis dechargee. Redemarrez la machine.",
 

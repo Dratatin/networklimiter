@@ -306,6 +306,23 @@ L'installer explicitement à un moment où l'utilisateur a consenti à une élé
 l'opération visible, journalisable et surtout **réversible par la désinstallation** — condition
 de FR-027 et de SC-010.
 
+**Lacune corrigée le 18/09/2026 — qui démarre le pilote ?** Cette entrée prescrivait
+d'enregistrer le pilote à l'installation et d'ouvrir avec `NO_INSTALL`, sans dire qui le
+**charge**. Un service noyau déclaré « à la demande » ne se charge <b>pas</b> à l'ouverture d'un
+périphérique : il faut appeler `StartService`. Sans `NO_INSTALL`, `WinDivertOpen` s'en charge
+lui-même ; avec, personne ne le faisait, et l'ouverture échouait sur un
+`ERROR_SERVICE_DOES_NOT_EXIST` trompeur alors que le service était bel et bien enregistré.
+
+C'est désormais la responsabilité du service, via `WinDivertDriverService.EnsureRunning()`. Le
+pilote n'est délibérément **pas arrêté** à l'extinction : un autre outil peut utiliser WinDivert
+sur la même machine — clumsy, GoodbyeDPI — et l'arrêter lui couperait le réseau. Un pilote chargé
+sans handle ouvert ne détourne rien ; le laisser est sans conséquence, l'arrêter peut en avoir.
+
+**Chargement du pilote vérifié sur machine réelle le 18/09/2026** : Windows 11 build 26200 x64,
+le pilote démarre et passe à `RUNNING`. Ni Secure Boot ni l'intégrité de la mémoire ne le
+bloquent sur cette configuration. C'était la seule hypothèse majeure du projet qu'aucun test ne
+pouvait valider.
+
 **Séquence de désinstallation, dans cet ordre** : arrêt du service → fermeture des handles (le
 trafic redevient non limité) → arrêt et suppression du service pilote → suppression des fichiers
 → suppression de `%ProgramData%\NetworkLimiter`. Chaque étape est vérifiée par le test de
