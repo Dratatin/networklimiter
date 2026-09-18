@@ -115,8 +115,8 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Identité de processus
 
-- [ ] T049 [P] Écrire les tests dans `tests/NetworkLimiter.Service.Tests/ProcessIdentity/ProcessIdentityResolverTests.cs` : clé de cache `(processId, startTime)`, **PID réutilisé → nouvelle résolution**, chemin non résoluble → instance « inconnue » dont le trafic n'est jamais limité
-- [ ] T050 Implémenter `ProcessIdentityResolver` (`QueryFullProcessImageName`) dans `src/NetworkLimiter.Service/ProcessIdentity/ProcessIdentityResolver.cs`
+- [X] T049 [P] Écrire les tests dans `tests/NetworkLimiter.Service.Tests/ProcessIdentity/ProcessIdentityResolverTests.cs` : clé de cache `(processId, startTime)`, **PID réutilisé → nouvelle résolution**, chemin non résoluble → instance « inconnue » dont le trafic n'est jamais limité
+- [X] T050 Implémenter `ProcessIdentityResolver` (`QueryFullProcessImageName`) dans `src/NetworkLimiter.Service/ProcessIdentity/ProcessIdentityResolver.cs`
 
 ### Persistance de base
 
