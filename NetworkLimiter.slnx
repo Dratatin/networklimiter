@@ -3,6 +3,7 @@
     <Project Path="src/NetworkLimiter.App/NetworkLimiter.App.csproj" />
     <Project Path="src/NetworkLimiter.Contracts/NetworkLimiter.Contracts.csproj" />
     <Project Path="src/NetworkLimiter.Core/NetworkLimiter.Core.csproj" />
+    <Project Path="src/NetworkLimiter.Installer/NetworkLimiter.Installer.wixproj" />
     <Project Path="src/NetworkLimiter.Service/NetworkLimiter.Service.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -58,6 +58,24 @@ jobs:
         # -warnaserror ferme le cas des avertissements hors compilateur C#.
         run: dotnet build --no-restore --configuration ${{ matrix.configuration }} -warnaserror
 
+      - name: Construire l'installeur
+        # Construit A PART, et non par la solution : « dotnet build » sur le fichier de
+        # solution ignore le projet WiX, constate en supprimant le MSI puis en reconstruisant
+        # la solution entiere — aucun paquet n'etait reproduit, et aucune erreur signalee.
+        #
+        # L'etape n'est pas facultative : MsiPackageTests inspecte les tables du paquet produit
+        # pour verifier que les conditions de lancement, le raccourci et la sequence d'arret y
+        # figurent vraiment. Ces tests ECHOUENT en l'absence de MSI, deliberement, plutot que
+        # de passer en ne verifiant rien.
+        run: dotnet build src/NetworkLimiter.Installer --configuration ${{ matrix.configuration }}
+
+      - name: Publier l'installeur
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.configuration }}
+          path: src/NetworkLimiter.Installer/bin/${{ matrix.configuration }}/*.msi
+          retention-days: 14
+
       - name: Tests unitaires, de contrat et d'assemblage
         # NetworkLimiter.Service.Tests manquait a cette liste : 317 tests ne tournaient sur
         # aucun commit, dont le garde-fou qui verifie que les filtres WinDivert CORRESPONDENT

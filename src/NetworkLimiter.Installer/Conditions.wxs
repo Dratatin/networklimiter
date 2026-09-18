@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <!--
+    Conditions de lancement (T122, FR-035).
+
+    Le service refuse déjà de démarrer sur une plateforme hors matrice. Ces conditions font la
+    même chose PLUS TÔT, et c'est toute la différence : une installation qui réussit puis un
+    service qui ne démarre jamais laisse l'utilisateur devant un produit installé, visible dans
+    « Applications et fonctionnalités », et qui ne fonctionne pas — sans lui dire pourquoi.
+    Refuser avant d'écrire le moindre fichier est plus honnête et ne laisse rien à nettoyer.
+
+    Chaque message nomme la cause ET ce qu'elle implique. « Plateforme non supportée » n'aide
+    personne : quelqu'un sur ARM64 doit apprendre qu'aucun pilote n'existe pour son matériel,
+    pas qu'il devrait réessayer.
+  -->
+
+  <Fragment>
+
+    <!--
+      Le numéro de build est lu dans le registre, pas dans la propriété WindowsBuild de
+      Windows Installer. Celle-ci provient de GetVersionEx, dont le comportement dépend du
+      manifeste de compatibilité du processus appelant : sur Windows 10 et 11, une valeur
+      plafonnée à 9200 est un résultat possible, et bloquerait alors TOUTES les installations.
+
+      CurrentBuildNumber est une chaîne. La conversion en entier par MSI est implicite dans
+      une comparaison numérique, d'où le préfixe de comparaison entière.
+    -->
+    <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
+      <RegistrySearch Id="SearchWindowsBuild"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                      Name="CurrentBuildNumber"
+                      Type="raw"
+                      Bitness="always64" />
+    </Property>
+
+    <!--
+      L'architecture de la MACHINE, pas celle du processus d'installation. Un MSI x64 s'exécute
+      sous émulation sur ARM64 et croirait tourner sur du x64 : la variable d'environnement
+      native est le seul témoin fiable du matériel réel.
+    -->
+    <Property Id="MACHINEARCHITECTURE" Secure="yes">
+      <RegistrySearch Id="SearchProcessorArchitecture"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+                      Name="PROCESSOR_ARCHITECTURE"
+                      Type="raw"
+                      Bitness="always64" />
+    </Property>
+
+    <!--
+      ARM64 : rédhibitoire et définitif. WinDivert ne publie pas de pilote ARM64 signé, et
+      aucune mise à jour de Windows n'y changera rien. Le dire évite une recherche vaine.
+
+      Évalué EN PREMIER, avant la version : envoyer quelqu'un mettre à jour Windows pour un
+      obstacle que la mise à jour ne lèvera pas serait une perte de temps doublée d'un faux
+      espoir.
+    -->
+    <Launch Condition="MACHINEARCHITECTURE &lt;&gt; &quot;ARM64&quot;"
+            Message="NetworkLimiter ne fonctionne pas sur les PC ARM64. La limitation repose sur le pilote réseau WinDivert, qui n'existe pas en version ARM64 signée. Ce n'est pas une limitation temporaire : aucune mise à jour de Windows ne rendra l'installation possible." />
+
+    <!--
+      x86 : le service et le pilote sont 64 bits. Un Windows 32 bits ne peut pas les charger.
+    -->
+    <Launch Condition="VersionNT64"
+            Message="NetworkLimiter exige un Windows 64 bits. Cette machine exécute un Windows 32 bits, qui ne peut pas charger le pilote d'interception." />
+
+    <!--
+      Build minimal 19045 (Windows 10 22H2). Les versions antérieures ne reçoivent plus de
+      mises à jour de sécurité : les supporter reviendrait à valider l'outil sur un socle
+      vulnérable. Celle-ci, contrairement à l'architecture, se corrige.
+    -->
+    <Launch Condition="Installed OR (WINDOWSBUILDNUMBER &gt;= 19045)"
+            Message="NetworkLimiter exige Windows 10 version 22H2 (build 19045) ou plus récent. Mettez Windows à jour, puis relancez l'installation." />
+
+    <!--
+      Privilèges. Le paquet est perMachine : il écrit dans Program Files, enregistre un service
+      et un pilote noyau. Sans élévation, l'installation échouerait au milieu, laissant un état
+      partiel plus difficile à diagnostiquer qu'un refus net.
+    -->
+    <Launch Condition="Privileged"
+            Message="NetworkLimiter doit être installé avec des droits administrateur : il enregistre un service Windows et un pilote réseau." />
+
+  </Fragment>
+
+</Wix>

@@ -34,12 +34,25 @@
 
     <MajorUpgrade DowngradeErrorMessage="Une version plus récente de NetworkLimiter est déjà installée." />
 
+    <!--
+      Tire le fragment de Conditions.wxs dans le paquet.
+
+      WiX n'inclut QUE les fragments référencés, et écarte les autres SANS AVERTISSEMENT. Sans
+      ces deux références, les conditions de lancement — blocage ARM64, x86, build minimal,
+      élévation — ne figuraient tout simplement pas dans le MSI produit : il se construisait
+      parfaitement et n'appliquait aucune d'elles. Constaté en inspectant la table
+      LaunchCondition du paquet, la seule façon de s'en apercevoir.
+    -->
+    <PropertyRef Id="WINDOWSBUILDNUMBER" />
+    <PropertyRef Id="MACHINEARCHITECTURE" />
+
     <MediaTemplate EmbedCab="yes" />
 
     <Feature Id="Main" Title="NetworkLimiter">
       <ComponentGroupRef Id="ServiceComponents" />
       <ComponentGroupRef Id="DriverComponents" />
       <ComponentGroupRef Id="DataDirectoryComponents" />
+      <ComponentGroupRef Id="UninstallSequence" />
     </Feature>
 
   </Package>
@@ -52,12 +65,71 @@
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="DATAFOLDER" Name="NetworkLimiter" />
     </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="APPSHORTCUTFOLDER" Name="NetworkLimiter" />
+    </StandardDirectory>
   </Fragment>
 
   <Fragment>
     <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <!--
+        Ce que « dotnet publish » a rassemblé, par type de fichier.
+
+        Le paquet n'embarquait auparavant que NetworkLimiter.Service.exe : sans ses dépendances
+        gérées ni son fichier de configuration d'exécution, le service installé n'aurait pas
+        démarré — et aucune étape de construction ne s'en serait plainte.
+
+        Les .pdb, .xml de documentation et packages.lock.json sont volontairement laissés de
+        côté : ils n'ont rien à faire sur la machine d'un utilisateur. La construction échoue si
+        un type de fichier inattendu apparaît dans le répertoire de préparation, pour qu'un
+        nouvel élément nécessaire ne soit jamais omis en silence.
+      -->
+      <Files Include="$(var.StageDir)*.dll" />
+      <Files Include="$(var.StageDir)*.runtimeconfig.json" />
+      <Files Include="$(var.StageDir)*.deps.json" />
+
+      <Component Id="ApplicationExecutable" Guid="*">
+        <File Id="AppExe" Source="$(var.StageDir)NetworkLimiter.App.exe" KeyPath="yes">
+
+        <!--
+          Le raccourci vit dans le composant qui porte sa CIBLE, et non dans un composant à
+          part avec une clé de registre.
+
+          Ce n'est pas un détail de style : un paquet perMachine dont le raccourci a une clé
+          HKLM pour clé principale mélange données par-machine et par-utilisateur, ce que les
+          contrôles ICE 38, 43, 57 et 90 refusent tous les quatre. L'exécutable est une clé
+          par-machine cohérente avec la portée du paquet, et le raccourci disparaît avec lui.
+
+          Il vise l'INTERFACE, jamais le service, et ne demande aucune élévation : celle-ci
+          n'est réclamée qu'au moment de modifier une limite (FR-034, principe I). Un raccourci
+          élevé ferait apparaître une invite UAC pour simplement consulter ses règles.
+
+          Il est imbriqué DANS le fichier, et non simplement dans le composant. Placé au niveau
+          du composant, WiX prend pour cible le répertoire de celui-ci : le raccourci ouvrait
+          l'explorateur sur le dossier d'installation au lieu de lancer l'application. Rien ne
+          l'aurait signalé — la construction réussissait, et seule l'inspection de la table
+          Shortcut du paquet a montré la cible « [INSTALLFOLDER] » au lieu de l'exécutable.
+        -->
+          <Shortcut Id="NetworkLimiterShortcut"
+                    Directory="APPSHORTCUTFOLDER"
+                    Name="NetworkLimiter"
+                    Description="Limiter la bande passante des applications"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="no" />
+        </File>
+
+        <RemoveFolder Id="RemoveAppShortcutFolder"
+                      Directory="APPSHORTCUTFOLDER"
+                      On="uninstall" />
+      </Component>
+
+      <Component Id="ServiceSettings" Guid="*">
+        <File Id="AppSettings" Source="$(var.StageDir)appsettings.json" KeyPath="yes" />
+      </Component>
+
       <Component Id="ServiceExecutable" Guid="*">
-        <File Id="ServiceExe" Source="$(var.ServiceBinaryPath)" KeyPath="yes" />
+        <File Id="ServiceExe" Source="$(var.StageDir)NetworkLimiter.Service.exe" KeyPath="yes" />
 
         <ServiceInstall Id="NetworkLimiterService"
                         Name="NetworkLimiter"
@@ -92,10 +164,16 @@
 
   <Fragment>
     <ComponentGroup Id="DriverComponents" Directory="INSTALLFOLDER">
-      <Component Id="WinDivertLibrary" Guid="*">
-        <File Id="WinDivertDll" Source="$(var.WinDivertDllPath)" KeyPath="yes" />
-      </Component>
+      <!--
+        WinDivert.dll n'est PAS déclarée ici : le projet du service la copie dans sa sortie, donc
+        « dotnet publish » la place dans le répertoire de préparation, où le motif *.dll la
+        récupère. La déclarer aussi à cet endroit produisait deux composants pour un même
+        fichier, ce que WiX refuse — et à juste titre, deux composants visant le même chemin se
+        désinstallant mal.
 
+        Le pilote .sys, lui, n'est copié par aucun projet : rien ne l'exécute en mode utilisateur.
+        Il vient donc directement du répertoire vérifié par empreinte à la restauration.
+      -->
       <Component Id="WinDivertDriver" Guid="*">
         <File Id="WinDivertSys" Source="$(var.WinDivertSysPath)" KeyPath="yes" />
 

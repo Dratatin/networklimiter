@@ -4,6 +4,24 @@
     <OutputName>NetworkLimiter</OutputName>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
+
+    <!--
+      Trois contrôles ICE supprimés nommément, et seulement ceux-là.
+
+      ICE43, ICE57 et ICE90 supposent tous qu'un raccourci placé dans ProgramMenuFolder est
+      par-utilisateur, et exigent donc une clé HKCU. La supposition ne tient pas ici : le paquet
+      est perMachine, ALLUSERS vaut 1 de façon fixe, et ProgramMenuFolder désigne alors le menu
+      Démarrer commun. Il n'existe aucune séquence d'interface où cette valeur pourrait changer,
+      qui est précisément le scénario contre lequel ICE90 met en garde.
+
+      Poser une clé HKCU pour les satisfaire serait pire : elle appartiendrait au compte qui a
+      lancé l'installation — souvent un compte administrateur distinct — et le raccourci
+      survivrait à la désinstallation pour tous les autres.
+
+      CETTE SUPPRESSION DEVIENT FAUSSE si le paquet passe un jour en perUser ou accepte les deux
+      portées. Elle est alors à retirer, pas à élargir.
+    -->
+    <SuppressIces>ICE43;ICE57;ICE90</SuppressIces>
     <!--
       Le squelette d'installeur vit en Phase 2 et non en US5 : les tests de US4 sur machine
       propre en dependent (redemarrage, application du profil actif sans interface). Les
@@ -12,8 +30,81 @@
     -->
   </PropertyGroup>
 
+  <!--
+    Chemins des binaires empaquetes. Ils manquaient : ce projet n'etait reference nulle part,
+    donc jamais construit, donc jamais valide. Un installeur qui ne compile pas n'existe pas.
+
+    Le repertoire de sortie du service depend de sa configuration : le suivre plutot que le
+    figer evite d'empaqueter un binaire Debug dans un paquet Release sans que rien ne le dise.
+  -->
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\</RepoRoot>
+    <StageDir>$(RepoRoot)build\stage\$(Configuration)\</StageDir>
+    <WinDivertDir>$(RepoRoot)build\windivert\x64\</WinDivertDir>
+
+    <DefineConstants>
+      StageDir=$(StageDir);
+      WinDivertDllPath=$(WinDivertDir)WinDivert.dll;
+      WinDivertSysPath=$(WinDivertDir)WinDivert64.sys
+    </DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" />
   </ItemGroup>
+
+  <!--
+    Publication des deux exécutables dans un répertoire de préparation commun, AVANT la
+    construction du paquet.
+
+    Le paquet n'embarquait que NetworkLimiter.Service.exe : ni ses dépendances gérées, ni son
+    fichier de configuration d'exécution, ni l'interface. Il installait donc un service
+    incapable de démarrer, et aucune fenêtre — sans qu'aucune étape de construction ne s'en
+    plaigne. « dotnet publish » rassemble ce dont chaque exécutable a réellement besoin, ce
+    qu'une liste de fichiers tenue à la main finit toujours par oublier.
+
+    Les deux publient dans le MÊME répertoire, délibérément : ils partagent Core et Contracts,
+    et un répertoire d'installation unique évite d'en distribuer deux copies divergentes.
+  -->
+  <Target Name="StageBinaries" BeforeTargets="BeforeBuild">
+    <MSBuild Projects="..\NetworkLimiter.Service\NetworkLimiter.Service.csproj"
+             Targets="Publish"
+             Properties="Configuration=$(Configuration);PublishDir=$(StageDir)" />
+
+    <MSBuild Projects="..\NetworkLimiter.App\NetworkLimiter.App.csproj"
+             Targets="Publish"
+             Properties="Configuration=$(Configuration);PublishDir=$(StageDir)" />
+
+    <Error Condition="!Exists('$(StageDir)NetworkLimiter.Service.exe')"
+           Text="Le service n'a pas été publié dans $(StageDir) : le paquet serait vide de l'essentiel." />
+
+    <Error Condition="!Exists('$(StageDir)NetworkLimiter.App.exe')"
+           Text="L'interface n'a pas été publiée dans $(StageDir) : le paquet installerait un service sans fenêtre." />
+
+    <!--
+      Package.wxs embarque les fichiers PAR TYPE. Un type inattendu serait donc silencieusement
+      laissé de côté, et le produit installé pourrait manquer de quelque chose d'essentiel sans
+      que rien ne le signale — exactement ce qui s'était produit quand seul l'exécutable du
+      service était empaqueté.
+
+      Les types volontairement exclus sont listés ici : ils n'ont rien à faire chez un
+      utilisateur. Tout le reste doit être décidé explicitement, pas oublié.
+    -->
+    <ItemGroup>
+      <StagedFile Include="$(StageDir)**\*" />
+      <UnexpectedStagedFile Include="@(StagedFile)"
+                            Exclude="$(StageDir)**\*.dll;
+                                     $(StageDir)**\*.exe;
+                                     $(StageDir)**\*.runtimeconfig.json;
+                                     $(StageDir)**\*.deps.json;
+                                     $(StageDir)appsettings.json;
+                                     $(StageDir)**\*.pdb;
+                                     $(StageDir)**\*.xml;
+                                     $(StageDir)packages.lock.json" />
+    </ItemGroup>
+
+    <Error Condition="'@(UnexpectedStagedFile)' != ''"
+           Text="Fichiers de type inattendu dans $(StageDir) : @(UnexpectedStagedFile->'%(Filename)%(Extension)', ', '). Décidez explicitement s'ils doivent être empaquetés (Package.wxs) ou exclus (ici)." />
+  </Target>
 
 </Project>

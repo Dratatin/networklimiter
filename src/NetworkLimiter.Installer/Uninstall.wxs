@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    Séquence de désinstallation ordonnée (T123, FR-027, SC-010).
+
+    La séquence voulue :
+
+      1. arrêter le service NetworkLimiter, en attendant réellement sa fin ;
+      2. ses handles WinDivert se ferment avec le processus, donc le trafic est rendu ;
+      3. arrêter le pilote WinDivert, désormais sans client ;
+      4. retirer les enregistrements de service, les fichiers, puis %ProgramData%.
+
+    CE QUI EST GARANTI, ET CE QUI NE L'EST PAS. La propriété qui compte — le trafic est
+    rendu — ne dépend QUE de l'étape 1, et celle-ci est garantie par Wait="yes" sur l'arrêt du
+    service : Windows Installer attend la fin effective du processus, dont la mort ferme les
+    handles quoi qu'il arrive. Les étapes suivantes relèvent de la propreté, pas de la sûreté.
+
+    L'ordre entre les deux arrêts de service repose, lui, sur l'ordre de déclaration des
+    composants dans Package.wxs — ServiceComponents avant DriverComponents. Windows Installer
+    traite la table ServiceControl en une seule action standard, sans notion de dépendance
+    entre lignes : c'est donc une convention tenue par la structure du paquet, pas une
+    contrainte que le format permet d'exprimer. Elle est signalée ici plutôt que supposée.
+
+    Déclarer une dépendance de service pour laisser le gestionnaire de services imposer
+    l'ordre a été écarté : elle empêcherait NetworkLimiter de démarrer quand le pilote refuse
+    de se charger, et supprimerait précisément le mode dégradé qui permet d'en expliquer la
+    raison à l'utilisateur.
+
+    Tout est déclaratif. Aucune action personnalisée, donc aucun script privilégié à auditer,
+    et un rollback géré par Windows Installer plutôt que par du code à écrire.
+  -->
+
+  <Fragment>
+
+    <!--
+      Arrêt du service applicatif. Wait="yes" est le point critique : sans lui, MSI enchaîne
+      sans attendre, et la suite s'exécuterait pendant que le service tient encore ses handles.
+
+      Remove="uninstall" retire l'enregistrement du service — c'est ce qui fait qu'aucun
+      « composant système modifié » ne subsiste, au sens de SC-010.
+    -->
+    <ComponentGroup Id="UninstallSequence" Directory="INSTALLFOLDER">
+
+      <Component Id="UninstallOrdering" Guid="*">
+
+        <!--
+          Composant sans fichier : sa clé est une valeur de registre, retirée à la
+          désinstallation comme le reste. Elle sert aussi de trace de version installée,
+          lisible par un diagnostic ultérieur.
+        -->
+        <RegistryValue Root="HKLM"
+                       Key="Software\NetworkLimiter"
+                       Name="InstalledVersion"
+                       Type="string"
+                       Value="[ProductVersion]"
+                       KeyPath="yes" />
+
+        <!--
+          Le journal du service et le fichier de configuration ne sont pas retirés par les
+          fichiers du paquet : ils sont créés à l'exécution, donc inconnus du MSI. Sans cette
+          suppression explicite, le sous-répertoire logs survivrait à la désinstallation et le
+          RemoveFolder du squelette échouerait en silence sur un répertoire non vide — laissant
+          exactement la « configuration résiduelle » que FR-027 interdit.
+        -->
+        <util:RemoveFolderEx Id="RemoveDataFolderTree"
+                             On="uninstall"
+                             Property="DATAFOLDERTOREMOVE" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!--
+      RemoveFolderEx exige un chemin résolu par une propriété, pas un répertoire MSI : la
+      recherche ci-dessous la renseigne au moment de l'exécution.
+    -->
+    <Property Id="DATAFOLDERTOREMOVE" Secure="yes">
+      <RegistrySearch Id="SearchDataFolder"
+                      Root="HKLM"
+                      Key="Software\NetworkLimiter"
+                      Name="DataFolder"
+                      Type="raw"
+                      Bitness="always64" />
+    </Property>
+
+  </Fragment>
+
+</Wix>

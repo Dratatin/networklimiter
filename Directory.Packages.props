@@ -58,6 +58,12 @@
       fournissent sans qu on ait a ecrire et maintenir notre propre abstraction.
     -->
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
+    <!--
+      Extension WiX pour PermissionEx et RemoveFolderEx. Version alignee sur celle du SDK WiX
+      du wixproj : les deux doivent rester identiques, une extension d une autre version majeure
+      etant refusee a la construction.
+    -->
+    <PackageVersion Include="WixToolset.Util.wixext" Version="5.0.2" />
   </ItemGroup>
 
 </Project>

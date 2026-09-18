@@ -83,3 +83,5 @@ Desktop.ini
 $RECYCLE.BIN/
 *.lnk
 *.tmp
+
+build/stage/
