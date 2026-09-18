@@ -318,10 +318,19 @@ pilote n'est délibérément **pas arrêté** à l'extinction : un autre outil p
 sur la même machine — clumsy, GoodbyeDPI — et l'arrêter lui couperait le réseau. Un pilote chargé
 sans handle ouvert ne détourne rien ; le laisser est sans conséquence, l'arrêter peut en avoir.
 
-**Chargement du pilote vérifié sur machine réelle le 18/09/2026** : Windows 11 build 26200 x64,
-le pilote démarre et passe à `RUNNING`. Ni Secure Boot ni l'intégrité de la mémoire ne le
-bloquent sur cette configuration. C'était la seule hypothèse majeure du projet qu'aucun test ne
-pouvait valider.
+**Chaîne native validée de bout en bout sur machine réelle le 18/09/2026** — Windows 11
+build 26200 x64, via `NetworkLimiter.Service.exe --diagnose` :
+
+| Étape | Résultat |
+|-------|----------|
+| Chargement du pilote | Passe à `RUNNING` ; ni Secure Boot ni l'intégrité de la mémoire ne le bloquent |
+| Ouverture du handle `FLOW` | Réussie |
+| Ouverture du handle `NETWORK` | Réussie |
+| Fermeture des handles | Propre, aucun trafic détourné après coup |
+
+Ce résultat valide d'un coup ce qu'aucun test unitaire ne pouvait atteindre : les liaisons
+P/Invoke, les chaînes de filtre, les drapeaux d'ouverture, et surtout l'acceptation du pilote
+par Windows. C'était la seule hypothèse majeure du projet qui restait à vérifier.
 
 **Séquence de désinstallation, dans cet ordre** : arrêt du service → fermeture des handles (le
 trafic redevient non limité) → arrêt et suppression du service pilote → suppression des fichiers

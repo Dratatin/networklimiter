@@ -421,3 +421,18 @@ Relevés par `/speckit-analyze` et volontairement non traités à ce stade :
 - Chaque point de contrôle permet de s'arrêter et de valider une story seule.
 - Toute modification du service, du pilote ou de l'IPC référence sa spécification et exige une
   seconde relecture (constitution, règles de contribution).
+
+---
+
+## Hors tâches numérotées, ajouté en cours de Phase 3
+
+Deux pièces sans identifiant de tâche, nées de la validation sur machine réelle :
+
+- **`src/NetworkLimiter.Service/InterceptionWorker.cs`** — le `BackgroundService` qui assemble
+  ACL, configuration, pilote, pipeline et règles, et les fait vivre pour la durée du service.
+  Aucune tâche ne le nommait : T067 décrivait le pipeline, pas son hébergement. Sans lui, tout
+  le travail de la Phase 3 restait du code que rien n'exécute.
+- **`src/NetworkLimiter.Service/RuleCommands.cs`** — `--add-rule`, `--list-rules`,
+  `--clear-rules`. **Aide temporaire**, à retirer quand T072 et T073 auront livré l'interface.
+  Elle passe par `RuleStore`, donc par les mêmes validations que le futur gestionnaire IPC :
+  une commande qui écrirait directement le fichier validerait autre chose que le produit.

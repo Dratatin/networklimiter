@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using NetworkLimiter.Service.Safety;
 using Serilog;
 using Serilog.Events;
@@ -20,6 +21,20 @@ internal static class Program
         if (Array.Exists(args, arg => string.Equals(arg, "--diagnose", StringComparison.Ordinal)))
         {
             return Diagnostics.Run();
+        }
+
+        // Commandes de regles : aide au developpement en attendant l'interface (T072, T073).
+        // Elles precedent la creation de l'hote, sinon le service demarrerait aussi.
+        switch (args.Length > 0 ? args[0] : null)
+        {
+            case "--add-rule":
+                return RuleCommands.AddRule(args);
+            case "--list-rules":
+                return RuleCommands.ListRules();
+            case "--clear-rules":
+                return RuleCommands.ClearRules();
+            default:
+                break;
         }
 
         // La verification de compatibilite precede TOUT le reste, journalisation comprise :
@@ -48,6 +63,8 @@ internal static class Program
 
             builder.Services.AddSerilog();
             builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddSingleton(Log.Logger);
+            builder.Services.AddHostedService<InterceptionWorker>();
             builder.Services.AddWindowsService(options => options.ServiceName = "NetworkLimiter");
 
             using IHost host = builder.Build();
@@ -71,9 +88,19 @@ internal static class Program
 
     private static void ConfigureLogging()
     {
-        Log.Logger = new LoggerConfiguration()
+        LoggerConfiguration configuration = new LoggerConfiguration()
             .MinimumLevel.Information()
-            .Enrich.FromLogContext()
+            .Enrich.FromLogContext();
+
+        // Lance a la main depuis un terminal, le service doit dire ce qu'il fait a l'ecran :
+        // sans cela, la seule facon d'observer un demarrage est d'aller lire un fichier, ce
+        // qui rend toute verification penible au moment ou elle compte le plus.
+        if (!WindowsServiceHelpers.IsWindowsService())
+        {
+            configuration = configuration.WriteTo.Sink(new ConsoleSink());
+        }
+
+        Log.Logger = configuration
             .WriteTo.File(
                 ServicePaths.LogFileTemplate,
                 rollingInterval: RollingInterval.Day,
@@ -94,6 +121,32 @@ internal static class Program
                 formatProvider: CultureInfo.InvariantCulture,
                 restrictedToMinimumLevel: LogEventLevel.Error)
             .CreateLogger();
+    }
+
+    /// <summary>Écrit les événements sur la sortie standard.</summary>
+    /// <remarks>
+    /// Écrit à la main plutôt que tiré d'un paquet : <c>Serilog.Sinks.Console</c> ne servirait
+    /// qu'à l'exécution en console, et chaque dépendance supplémentaire est une surface de
+    /// chaîne d'approvisionnement à surveiller pour un service qui tourne en SYSTEM.
+    /// </remarks>
+    private sealed class ConsoleSink : Serilog.Core.ILogEventSink
+    {
+        public void Emit(LogEvent logEvent)
+        {
+            ArgumentNullException.ThrowIfNull(logEvent);
+
+            TextWriter output = logEvent.Level >= LogEventLevel.Error ? Console.Error : Console.Out;
+
+            output.WriteLine(string.Create(
+                CultureInfo.CurrentCulture,
+                $"{logEvent.Timestamp:HH:mm:ss} [{logEvent.Level.ToString()[..3].ToUpperInvariant()}] " +
+                $"{logEvent.RenderMessage(CultureInfo.CurrentCulture)}"));
+
+            if (logEvent.Exception is not null)
+            {
+                output.WriteLine(logEvent.Exception);
+            }
+        }
     }
 
     private static void WriteStartupFailureToEventLog(string? diagnostic)
