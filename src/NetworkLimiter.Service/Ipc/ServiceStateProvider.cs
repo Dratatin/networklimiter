@@ -54,11 +54,27 @@ public sealed class ServiceStateProvider : IStateSource
         IReadOnlySet<string> running = _runningPaths();
         PersistedConfig config = _rules.Config;
 
+        HashSet<string> ruled = [.. config.ActiveProfile.Rules.Select(rule => rule.Target.ExecutablePath)];
+
         return new GetStateResultPayload
         {
             ActiveProfileId = config.ActiveProfileId,
             Suspended = _coordinator.Suspended,
             InterceptionAvailable = _coordinator.InterceptionAvailable,
+            ObservedApplications =
+            [
+                .. running
+                    .Select(path => new ObservedAppDto
+                    {
+                        ExecutablePath = path,
+                        ExecutableName = Path.GetFileName(path),
+                        AlreadyRuled = ruled.Contains(path),
+                    })
+                    // Ordre stable : une liste qui se reordonne a chaque rafraichissement
+                    // rendrait impossible de cliquer sur ce qu'on vise.
+                    .OrderBy(app => app.ExecutableName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(app => app.ExecutablePath, StringComparer.OrdinalIgnoreCase),
+            ],
             Profiles =
             [
                 .. config.Profiles.Select(profile => new ProfileStateDto

@@ -56,6 +56,26 @@ public sealed record ProfileStateDto
     public required IReadOnlyList<RuleStateDto> Rules { get; init; }
 }
 
+/// <summary>
+/// Une application vue en train de communiquer.
+/// </summary>
+/// <remarks>
+/// C'est ce qui rend l'outil utilisable sans deviner : sans cette liste, l'utilisateur devrait
+/// connaître le chemin exact de l'exécutable à limiter et le saisir à la main. Seul le service
+/// dispose de l'information, puisque lui seul voit les flux.
+/// </remarks>
+public sealed record ObservedAppDto
+{
+    /// <summary>Chemin normalisé de l'exécutable.</summary>
+    public required string ExecutablePath { get; init; }
+
+    /// <summary>Nom de fichier de l'exécutable.</summary>
+    public required string ExecutableName { get; init; }
+
+    /// <summary>Une règle du profil actif vise déjà cette application.</summary>
+    public required bool AlreadyRuled { get; init; }
+}
+
 /// <summary>Réponse à <c>GetState</c>.</summary>
 public sealed record GetStateResultPayload
 {
@@ -77,6 +97,16 @@ public sealed record GetStateResultPayload
     /// le sont pas.
     /// </remarks>
     public required bool InterceptionAvailable { get; init; }
+
+    /// <summary>
+    /// Applications ayant eu une activité réseau récente, pour proposer quoi limiter (FR-001).
+    /// </summary>
+    /// <remarks>
+    /// Ne contient <b>aucune</b> information sur leurs correspondants : ni adresse, ni nom
+    /// d'hôte, ni port distant (FR-018, FR-033). Savoir qu'une application communique n'exige
+    /// pas de savoir avec qui, et l'outil n'a aucune raison de le transmettre.
+    /// </remarks>
+    public required IReadOnlyList<ObservedAppDto> ObservedApplications { get; init; }
 }
 
 /// <summary>

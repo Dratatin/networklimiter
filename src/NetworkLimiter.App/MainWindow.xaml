@@ -1,12 +1,209 @@
-﻿<Window x:Class="NetworkLimiter.App.MainWindow"
+<Window x:Class="NetworkLimiter.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:NetworkLimiter.App"
+        xmlns:views="clr-namespace:NetworkLimiter.App.Views"
+        xmlns:vm="clr-namespace:NetworkLimiter.App.ViewModels"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="NetworkLimiter" Height="560" Width="940" MinHeight="420" MinWidth="720">
 
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--
+            Bandeau d'état. FR-034b : les commandes de modification restent VISIBLES et
+            désactivées, avec la raison affichée. Les masquer ferait croire qu'elles n'existent
+            pas ; les laisser actives ferait perdre une saisie.
+        -->
+        <Border Grid.Row="0"
+                Background="#FFF4E5"
+                BorderBrush="#E8C27A"
+                BorderThickness="1"
+                Padding="10,8"
+                Margin="0,0,0,12"
+                Visibility="{Binding Shell.EditingBlockedMessage, Converter={StaticResource TextToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Shell.EditingBlockedMessage}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+
+                <Button Grid.Column="1"
+                        Content="Relancer en administrateur"
+                        Margin="12,0,0,0"
+                        Padding="10,4"
+                        Command="{Binding RequestElevationCommand}"
+                        Visibility="{Binding Shell.CanRequestElevation, Converter={StaticResource BoolToVisibility}}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="1.4*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Applications observées (T072) -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top"
+                           Text="Applications qui communiquent"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6" />
+
+                <Button DockPanel.Dock="Bottom"
+                        Content="Limiter cette application…"
+                        Margin="0,8,0,0"
+                        Padding="8,6"
+                        Command="{Binding CreateRuleCommand}"
+                        IsEnabled="{Binding Shell.CanEdit}" />
+
+                <Grid>
+                    <ListBox ItemsSource="{Binding Apps.Applications}"
+                             SelectedItem="{Binding Apps.Selected}"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ObservedAppViewModel}">
+                                <StackPanel Margin="2,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding ExecutableName}" FontWeight="SemiBold" />
+                                        <TextBlock Text="  (déjà limitée)"
+                                                   Opacity="0.6"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   Visibility="{Binding AlreadyRuled, Converter={StaticResource BoolToVisibility}}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ExecutablePath}"
+                                               Opacity="0.55"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Une liste vide n'est presque jamais une panne : on le dit. -->
+                    <TextBlock Text="{x:Static vm:AppListViewModel.EmptyHint}"
+                               TextWrapping="Wrap"
+                               Opacity="0.6"
+                               Margin="16"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               Visibility="{Binding Apps.IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+                </Grid>
+            </DockPanel>
+
+            <!-- Règles du profil actif -->
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top"
+                           Text="Limites en place"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6" />
+
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Modifier"
+                            MinWidth="90"
+                            Padding="8,6"
+                            Command="{Binding EditRuleCommand}"
+                            IsEnabled="{Binding Shell.CanEdit}" />
+
+                    <Button Content="Activer / désactiver"
+                            MinWidth="130"
+                            Margin="8,0,0,0"
+                            Padding="8,6"
+                            Command="{Binding ToggleRuleCommand}"
+                            IsEnabled="{Binding Shell.CanEdit}" />
+
+                    <Button Content="Supprimer"
+                            MinWidth="90"
+                            Margin="8,0,0,0"
+                            Padding="8,6"
+                            Command="{Binding DeleteRuleCommand}"
+                            IsEnabled="{Binding Shell.CanEdit}" />
+                </StackPanel>
+
+                <Grid>
+                    <ListBox ItemsSource="{Binding Rules.Rules}"
+                             SelectedItem="{Binding Rules.Selected}"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:RuleRowViewModel}">
+                                <StackPanel Margin="2,5">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+
+                                        <TextBlock Margin="8,0,0,0" Opacity="0.75" VerticalAlignment="Center">
+                                            <Run Text="↓" />
+                                            <Run Text="{Binding Download, Mode=OneWay}" />
+                                            <Run Text="   ↑" />
+                                            <Run Text="{Binding Upload, Mode=OneWay}" />
+                                        </TextBlock>
+
+                                        <TextBlock Text="désactivée"
+                                                   Margin="8,0,0,0"
+                                                   FontSize="11"
+                                                   Opacity="0.6"
+                                                   VerticalAlignment="Center"
+                                                   Visibility="{Binding Enabled, Converter={StaticResource BoolToVisibilityInverted}}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding ExecutablePath}"
+                                               Opacity="0.55"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis" />
+
+                                    <!--
+                                        FR-026 : une règle qui ne s'applique pas doit toujours
+                                        pouvoir dire pourquoi, en une phrase qui indique quoi faire.
+                                    -->
+                                    <TextBlock Text="{Binding InactiveExplanation}"
+                                               Foreground="#8A6D00"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Margin="0,2,0,0"
+                                               Visibility="{Binding InactiveExplanation, Converter={StaticResource TextToVisibility}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <TextBlock Text="Aucune limite définie. Choisissez une application à gauche."
+                               TextWrapping="Wrap"
+                               Opacity="0.6"
+                               Margin="16"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               Visibility="{Binding Rules.IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+                </Grid>
+            </DockPanel>
+
+            <!-- Éditeur, en superposition sur les deux colonnes -->
+            <Grid Grid.Column="0" Grid.ColumnSpan="3"
+                  Background="#99000000"
+                  Visibility="{Binding Editor, Converter={StaticResource TextToVisibility}}">
+                <views:RuleEditorView DataContext="{Binding Editor}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+            </Grid>
+        </Grid>
+
+        <!-- Barre d'état : ce que le service dit de lui-même, jamais une invention de l'interface -->
+        <TextBlock Grid.Row="2"
+                   Text="{Binding Shell.StatusMessage}"
+                   TextWrapping="Wrap"
+                   Opacity="0.75"
+                   Margin="0,10,0,0"
+                   Visibility="{Binding Shell.StatusMessage, Converter={StaticResource TextToVisibility}}" />
     </Grid>
 </Window>

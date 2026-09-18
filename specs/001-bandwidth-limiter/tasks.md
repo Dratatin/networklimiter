@@ -169,8 +169,8 @@ et vérifier le retour au débit nominal.
 - [X] T069 [US1] Implémenter les gestionnaires `UpsertRule`, `DeleteRule`, `SetRuleEnabled` dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs`, **transactionnels du point de vue de l'appelant** : validation complète → application mémoire → persistance atomique, échec à toute étape laissant l'état inchangé
 - [X] T070 [US1] Propager les changements de règle au pipeline vivant en < 5 s, sans recréer les seaux existants, dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs`
 - [X] T071 [US1] Diffuser `StateChanged` à **tous** les clients connectés, y compris non élevés, dans `src/NetworkLimiter.Service/Ipc/StateBroadcaster.cs`
-- [ ] T072 [US1] Implémenter la liste minimale des applications ayant une activité réseau dans `src/NetworkLimiter.App/ViewModels/AppListViewModel.cs`
-- [ ] T073 [US1] Implémenter l'éditeur de règle dans `src/NetworkLimiter.App/Views/RuleEditorView.xaml` avec validation des bornes **à la saisie** et unité toujours visible (FR-007)
+- [X] T072 [US1] Implémenter la liste minimale des applications ayant une activité réseau dans `src/NetworkLimiter.App/ViewModels/AppListViewModel.cs`
+- [X] T073 [US1] Implémenter l'éditeur de règle dans `src/NetworkLimiter.App/Views/RuleEditorView.xaml` avec validation des bornes **à la saisie** et unité toujours visible (FR-007)
 - [X] T074 [US1] Implémenter le mode lecture seule dans `src/NetworkLimiter.App/ViewModels/ShellViewModel.cs` : commandes visibles mais désactivées avec la raison affichée (FR-034b)
 - [X] T075 [US1] Implémenter la relance élevée dans `src/NetworkLimiter.App/Elevation/ElevationLauncher.cs` : `ShellExecute` verbe `runas` sur le même exécutable avec `--elevated`, une seule invite par session d'édition
 - [X] T076 [US1] Journaliser l'application et le retrait de chaque règle dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs` **sans** adresse distante, nom d'hôte ni URL (FR-033)
