@@ -156,7 +156,7 @@ et vérifier le retour au débit nominal.
 - [X] T059 [P] [US1] Écrire les tests de file de retard dans `tests/NetworkLimiter.Core.Tests/Shaping/DelayQueueTests.cs` : borne par règle, rejet en queue **compté**, et FR-003c — pour un flux temporisable, le compteur de rejets reste à **zéro** quel que soit le plafond
 - [X] T060 [P] [US1] Écrire les tests de résolution de règle dans `tests/NetworkLimiter.Core.Tests/Rules/RuleResolutionTests.cs` : appariement exact par chemin, repli par nom quand le chemin n'existe plus, **`matchMode` toujours remonté** (FR-039c), refus d'apparier un homonyme d'un autre emplacement sans le signaler
 - [X] T061 [P] [US1] Écrire les tests de contrat dans `tests/NetworkLimiter.Contracts.Tests/RuleMessagesTests.cs` : `UpsertRule`, `DeleteRule`, `SetRuleEnabled` testés à `min-1`, `min`, `max`, `max+1`, sans élévation, avec cible en doublon
-- [ ] T062 [P] [US1] Écrire le test d'intégration dans `tests/NetworkLimiter.Integration.Tests/Stories/ApplyRuleTests.cs` : règle appliquée en < 5 s sans rompre les connexions établies, modification en < 5 s, retrait en < 5 s, autres applications non affectées
+- [X] T062 [P] [US1] Écrire le test d'intégration dans `tests/NetworkLimiter.Integration.Tests/Stories/ApplyRuleTests.cs` : règle appliquée en < 5 s sans rompre les connexions établies, modification en < 5 s, retrait en < 5 s, autres applications non affectées
 
 ### Implementation for User Story 1
 

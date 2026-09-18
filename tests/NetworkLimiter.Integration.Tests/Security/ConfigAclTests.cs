@@ -26,6 +26,7 @@ namespace NetworkLimiter.Integration.Tests.Security;
 /// est pire qu'un test absent.
 /// </para>
 /// </remarks>
+[Trait("Requires", "Elevation")]
 public sealed class ConfigAclTests : IDisposable
 {
     private readonly string _directory;

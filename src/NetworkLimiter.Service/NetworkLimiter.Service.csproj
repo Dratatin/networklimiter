@@ -44,6 +44,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="NetworkLimiter.Service.Tests" />
+    <!--
+      Les tests d'integration montent le pipeline reel avec des intercepteurs simules ; ils ont
+      besoin des constructeurs d'adresse WinDivert reserves aux tests, pour fabriquer des
+      evenements de flux et des paquets sans pilote ni privileges administrateur.
+    -->
+    <InternalsVisibleTo Include="NetworkLimiter.Integration.Tests" />
   </ItemGroup>
 
 </Project>

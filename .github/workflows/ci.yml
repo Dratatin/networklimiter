@@ -58,26 +58,41 @@ jobs:
         # -warnaserror ferme le cas des avertissements hors compilateur C#.
         run: dotnet build --no-restore --configuration ${{ matrix.configuration }} -warnaserror
 
-      - name: Tests unitaires et de contrat
-        # Les tests d'integration et de debit exigent des privileges et du materiel
-        # reseau : ils sont exclus ici et couverts par integration.yml.
+      - name: Tests unitaires, de contrat et d'assemblage
+        # NetworkLimiter.Service.Tests manquait a cette liste : 317 tests ne tournaient sur
+        # aucun commit, dont le garde-fou qui verifie que les filtres WinDivert CORRESPONDENT
+        # a quelque chose. Ils n'exigent ni pilote charge ni elevation — seulement la DLL,
+        # restauree a l'etape precedente.
+        #
+        # Les tests d'integration tournent aussi, MOINS ceux marques « Requires=Elevation ».
+        # Le pipeline y est monte avec des intercepteurs simules : c'est le niveau ou les
+        # defauts de ce projet se sont reellement produits, il ne peut pas rester hors CI.
+        # Le reste — ACL reelles, pilote, debit — vit dans integration.yml.
         #
         # `dotnet test` n'accepte qu'un seul projet a la fois (MSB1008), d'ou la boucle
         # plutot qu'une liste d'arguments.
         shell: pwsh
         run: |
           $projects = @(
-              'tests/NetworkLimiter.Core.Tests'
-              'tests/NetworkLimiter.Contracts.Tests'
-              'tests/NetworkLimiter.App.Tests'
+              @{ Path = 'tests/NetworkLimiter.Core.Tests';        Filter = $null }
+              @{ Path = 'tests/NetworkLimiter.Contracts.Tests';   Filter = $null }
+              @{ Path = 'tests/NetworkLimiter.Service.Tests';     Filter = $null }
+              @{ Path = 'tests/NetworkLimiter.App.Tests';         Filter = $null }
+              @{ Path = 'tests/NetworkLimiter.Integration.Tests'; Filter = 'Requires!=Elevation' }
           )
           $failed = @()
           foreach ($project in $projects) {
-              Write-Host "::group::$project"
-              dotnet test --no-build --configuration ${{ matrix.configuration }} $project `
-                  --collect:"XPlat Code Coverage" `
-                  --logger "trx;LogFileName=$(Split-Path $project -Leaf).trx"
-              if ($LASTEXITCODE -ne 0) { $failed += $project }
+              Write-Host "::group::$($project.Path)"
+              $arguments = @(
+                  '--no-build'
+                  '--configuration', '${{ matrix.configuration }}'
+                  $project.Path
+                  '--collect:XPlat Code Coverage'
+                  "--logger", "trx;LogFileName=$(Split-Path $project.Path -Leaf).trx"
+              )
+              if ($project.Filter) { $arguments += @('--filter', $project.Filter) }
+              dotnet test @arguments
+              if ($LASTEXITCODE -ne 0) { $failed += $project.Path }
               Write-Host "::endgroup::"
           }
           if ($failed.Count -gt 0) {
