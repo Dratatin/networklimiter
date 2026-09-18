@@ -1,0 +1,19 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <PropertyGroup>
+    <OutputName>NetworkLimiter</OutputName>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!--
+      Le squelette d'installeur vit en Phase 2 et non en US5 : les tests de US4 sur machine
+      propre en dependent (redemarrage, application du profil actif sans interface). Les
+      conditions d'architecture et la sequence de desinstallation restent en US5, taches
+      T122 et T123.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>

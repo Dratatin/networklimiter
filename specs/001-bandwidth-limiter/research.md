@@ -311,6 +311,21 @@ trafic redevient non limité) → arrêt et suppression du service pilote → su
 → suppression de `%ProgramData%\NetworkLimiter`. Chaque étape est vérifiée par le test de
 désinstallation.
 
+**Version de WiX : rester en v5.** Constaté le 18/09/2026 en installant l'outillage : **WiX v6
+et v7 exigent l'acceptation de la licence « Open Source Maintenance Fee »**, un modèle de
+contribution financière annuelle. `wix build` refuse de s'exécuter tant qu'elle n'est pas
+acceptée. WiX 5.0.2 est la dernière version sans cette contrainte et suffit intégralement à nos
+besoins. Une montée en version majeure de WiX est donc une **décision de licence**, pas une mise
+à jour de routine, et ne doit pas être faite sans arbitrage explicite.
+
+**Enregistrement du pilote : par registre, pas par `ServiceInstall`.** Windows Installer ne
+supporte pas le type `kernelDriver` — WiX refuse la construction. Le service pilote est donc
+déclaré par entrées de registre (`Type=1`, `Start=3`, `ImagePath`). Cette forme a trois
+avantages sur une action personnalisée appelant `sc.exe` : elle est **transactionnelle** (MSI
+annule tout en cas d'échec), elle est **retirée à la désinstallation sans code à écrire**
+(SC-010), et elle **n'ajoute aucun script privilégié à auditer** — ce qui compte pour un produit
+dont la constitution impose de minimiser le code privilégié.
+
 **Licence** : WinDivert est sous **double licence LGPL v3 ou GPL v2**. La liaison dynamique avec
 la LGPL v3 convient à une distribution binaire, à condition de redistribuer le texte de licence
 et de permettre le remplacement de la bibliothèque. Un passage à une distribution commerciale en

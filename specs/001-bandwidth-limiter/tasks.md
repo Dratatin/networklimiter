@@ -128,7 +128,7 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 ### Déploiement minimal
 
 - [X] T055 [P] Écrire `tools/register-windivert-dev.ps1` pour enregistrer le service pilote en développement, le service ouvrant ses handles avec `WINDIVERT_FLAG_NO_INSTALL`
-- [ ] T056 Créer le squelette WiX v5 dans `src/NetworkLimiter.Installer/` : installation du service, **enregistrement du pilote WinDivert à l'installation** (R-011), pose des ACL de `%ProgramData%`. Placé en Phase 2 parce que les tests de US4 sur machine propre en dépendent ; conditions d'architecture et désinstallation restent en US5
+- [X] T056 Créer le squelette WiX v5 dans `src/NetworkLimiter.Installer/` : installation du service, **enregistrement du pilote WinDivert à l'installation** (R-011), pose des ACL de `%ProgramData%`. Placé en Phase 2 parce que les tests de US4 sur machine propre en dépendent ; conditions d'architecture et désinstallation restent en US5
 
 ### État de santé
 

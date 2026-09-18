@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<?define DriverServiceKey = "SYSTEM\CurrentControlSet\Services\WinDivert" ?>
+<?define ServiceKey = "SYSTEM\CurrentControlSet\Services\NetworkLimiter" ?>
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    Squelette d'installeur.
+
+    Deux décisions de conception y sont visibles :
+
+    1. Le pilote WinDivert est enregistré ICI, à l'installation, et non silencieusement au
+       premier appel de WinDivertOpen (research.md R-011). L'utilisateur consent alors à une
+       élévation explicite, l'opération est journalisable, et surtout elle devient réversible
+       par la désinstallation — condition de FR-027 et SC-010.
+
+    2. Les ACL de %ProgramData%\NetworkLimiter sont posées dès l'installation, héritage
+       désactivé. C'est le verrou réel de FR-034 : sans lui, un utilisateur standard lèverait
+       ses propres limites avec un éditeur de texte.
+
+    Les conditions d'architecture et la séquence de désinstallation ordonnée restent en US5,
+    tâches T122 et T123. Ce squelette vit en Phase 2 parce que les tests de US4 sur machine
+    propre en dépendent.
+  -->
+
+  <Package Name="NetworkLimiter"
+           Manufacturer="NetworkLimiter"
+           Version="0.1.0"
+           UpgradeCode="7d3f1b2a-5c84-4f19-9a6e-2b7c8d4e1f03"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de NetworkLimiter est déjà installée." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="Main" Title="NetworkLimiter">
+      <ComponentGroupRef Id="ServiceComponents" />
+      <ComponentGroupRef Id="DriverComponents" />
+      <ComponentGroupRef Id="DataDirectoryComponents" />
+    </Feature>
+
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="NetworkLimiter" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DATAFOLDER" Name="NetworkLimiter" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <Component Id="ServiceExecutable" Guid="*">
+        <File Id="ServiceExe" Source="$(var.ServiceBinaryPath)" KeyPath="yes" />
+
+        <ServiceInstall Id="NetworkLimiterService"
+                        Name="NetworkLimiter"
+                        DisplayName="NetworkLimiter"
+                        Description="Limite la bande passante des applications."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes" />
+
+        <!--
+          Démarrage automatique DIFFÉRÉ. Les limites du profil actif doivent s'appliquer après
+          un redémarrage sans que l'utilisateur ouvre l'interface (FR-020), mais sans retarder
+          l'ouverture de session.
+
+          Posé par valeur de registre et non par l'élément ServiceConfig de MSI, que le SDK
+          Windows Installer documente lui-même comme ne fonctionnant pas de façon fiable.
+        -->
+        <RegistryValue Root="HKLM" Key="$(var.ServiceKey)"
+                       Name="DelayedAutostart" Type="integer" Value="1" />
+
+        <ServiceControl Id="ControlNetworkLimiterService"
+                        Name="NetworkLimiter"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="DriverComponents" Directory="INSTALLFOLDER">
+      <Component Id="WinDivertLibrary" Guid="*">
+        <File Id="WinDivertDll" Source="$(var.WinDivertDllPath)" KeyPath="yes" />
+      </Component>
+
+      <Component Id="WinDivertDriver" Guid="*">
+        <File Id="WinDivertSys" Source="$(var.WinDivertSysPath)" KeyPath="yes" />
+
+        <!--
+          Le pilote est enregistré comme service NOYAU par entrées de registre, et non par
+          ServiceInstall : Windows Installer ne supporte tout simplement pas le type
+          kernelDriver.
+
+          Cette forme déclarative a trois avantages sur une action personnalisée appelant
+          sc.exe. Elle est transactionnelle — MSI annule tout en cas d'échec d'installation.
+          Elle est retirée à la désinstallation sans une ligne de code à écrire, ce qu'exige
+          SC-010. Et elle n'ajoute aucun script privilégié à auditer, ce qui compte pour un
+          produit dont la constitution impose de minimiser le code privilégié.
+
+          Type 1 = pilote noyau. Start 3 = à la demande : le pilote ne se charge que lorsque
+          le service ouvre un handle, jamais au démarrage de Windows.
+        -->
+        <RegistryValue Root="HKLM" Key="$(var.DriverServiceKey)"
+                       Name="Type" Type="integer" Value="1" />
+        <RegistryValue Root="HKLM" Key="$(var.DriverServiceKey)"
+                       Name="Start" Type="integer" Value="3" />
+        <RegistryValue Root="HKLM" Key="$(var.DriverServiceKey)"
+                       Name="ErrorControl" Type="integer" Value="1" />
+        <RegistryValue Root="HKLM" Key="$(var.DriverServiceKey)"
+                       Name="DisplayName" Type="string" Value="WinDivert" />
+        <RegistryValue Root="HKLM" Key="$(var.DriverServiceKey)"
+                       Name="ImagePath" Type="expandable" Value="[INSTALLFOLDER]WinDivert64.sys" />
+
+        <!-- Arrête le pilote avant de le retirer, pour libérer le trafic (principe IV). -->
+        <ServiceControl Id="StopWinDivertDriver"
+                        Name="WinDivert"
+                        Stop="both"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="DataDirectoryComponents" Directory="DATAFOLDER">
+      <Component Id="DataDirectory" Guid="*">
+        <CreateFolder>
+          <!--
+            Héritage désactivé et permissions explicites. Sans « Inheritable=no », le
+            répertoire hériterait des permissions de %ProgramData%, qui autorisent les
+            utilisateurs à créer des fichiers — de quoi contourner le verrou par remplacement.
+
+            Les utilisateurs n'ont que la lecture : l'interface non élevée doit pouvoir
+            afficher la configuration (FR-034), jamais la modifier.
+
+            Le service revalide ces permissions et reprend la propriété au besoin à chaque
+            démarrage : un relâchement posé par un tiers ne doit pas passer inaperçu.
+          -->
+          <util:PermissionEx User="SYSTEM" GenericAll="yes" Inheritable="no" />
+          <util:PermissionEx User="Administrators" GenericAll="yes" Inheritable="no" />
+          <util:PermissionEx User="Users" GenericRead="yes" GenericExecute="yes" Inheritable="no" />
+        </CreateFolder>
+
+        <RemoveFolder Id="RemoveDataFolder" On="uninstall" />
+
+        <RegistryValue Root="HKLM"
+                       Key="Software\NetworkLimiter"
+                       Name="DataFolder"
+                       Type="string"
+                       Value="[DATAFOLDER]"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>
