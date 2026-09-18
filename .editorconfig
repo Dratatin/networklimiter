@@ -1,0 +1,78 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,xml,csproj,props,targets,wxs}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+indent_size = 4
+max_line_length = 120
+
+# --- Organisation des using -------------------------------------------------
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# --- Style de langage -------------------------------------------------------
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_prefer_braces = true:warning
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_throw_expression = true:suggestion
+dotnet_style_readonly_field = true:warning
+dotnet_style_require_accessibility_modifiers = always:warning
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+
+# --- Nommage : constantes et champs prives ----------------------------------
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# --- Regles elevees en erreur ------------------------------------------------
+# Ces analyseurs ne sont pas cosmetiques : chacun ferme une classe de defaut qui
+# serait couteuse dans un service privilegie manipulant des handles natifs.
+
+# Disposer correctement les objets jetables (handles WinDivert, flux, tuyaux).
+dotnet_diagnostic.CA1063.severity = error
+dotnet_diagnostic.CA2000.severity = error
+dotnet_diagnostic.CA2213.severity = error
+
+# Interop natif : signatures P/Invoke correctes et champs de structure explicites.
+dotnet_diagnostic.CA1401.severity = error
+dotnet_diagnostic.CA2101.severity = error
+
+# Ne jamais avaler une exception silencieusement.
+dotnet_diagnostic.CA1031.severity = suggestion
+dotnet_diagnostic.RCS1075.severity = warning
+
+# Comparaisons de chaines explicites : la normalisation de chemin en depend.
+dotnet_diagnostic.CA1307.severity = error
+dotnet_diagnostic.CA1309.severity = error
+dotnet_diagnostic.CA1310.severity = error
+
+# Annulation cooperative dans les boucles de service.
+dotnet_diagnostic.CA2016.severity = error
+
+# Ne pas lever d'exception depuis un finaliseur ou un Dispose.
+dotnet_diagnostic.CA1065.severity = error
+
+[tests/**/*.cs]
+# Les tests peuvent nommer leurs methodes avec des underscores descriptifs.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1861.severity = none

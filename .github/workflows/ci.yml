@@ -1,0 +1,120 @@
+name: CI
+
+# Portes de fusion 1, 2 et 4 de la constitution :
+#   1. Build sans avertissement sur toutes les configurations.
+#   2. Tests unitaires et de contrat au vert.
+#   4. Analyse de vulnerabilite des dependances au vert.
+#
+# La porte 3 (tests d'integration sur VM de la matrice) vit dans integration.yml :
+# elle exige un runner Windows avec droits administrateur et le pilote installe.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  CI: true
+
+jobs:
+  build-and-test:
+    name: Build et tests (${{ matrix.configuration }})
+    # windows-latest est impose : WPF et l'interop Windows ne compilent pas ailleurs.
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurer WinDivert (empreinte + signature verifiees)
+        shell: pwsh
+        run: ./tools/restore-windivert.ps1
+
+      - name: Restaurer les paquets
+        run: dotnet restore --locked-mode
+
+      - name: Compiler
+        # TreatWarningsAsErrors est deja actif via Directory.Build.props ;
+        # -warnaserror ferme le cas des avertissements hors compilateur C#.
+        run: dotnet build --no-restore --configuration ${{ matrix.configuration }} -warnaserror
+
+      - name: Tests unitaires et de contrat
+        # Les tests d'integration et de debit exigent des privileges et du materiel
+        # reseau : ils sont exclus ici et couverts par integration.yml.
+        run: >
+          dotnet test --no-build --configuration ${{ matrix.configuration }}
+          tests/NetworkLimiter.Core.Tests
+          tests/NetworkLimiter.Contracts.Tests
+          tests/NetworkLimiter.App.Tests
+          --collect:"XPlat Code Coverage"
+          --logger "trx;LogFileName=test-results-${{ matrix.configuration }}.trx"
+
+      - name: Publier les resultats de test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.configuration }}
+          path: "**/TestResults/**"
+          retention-days: 14
+
+  dependency-audit:
+    name: Audit des dependances (porte 4)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurer les paquets
+        run: dotnet restore
+
+      - name: Echouer sur vulnerabilite haute ou critique
+        shell: pwsh
+        run: |
+          $output = dotnet list package --vulnerable --include-transitive 2>&1 | Out-String
+          Write-Host $output
+          if ($output -match 'High|Critical') {
+              Write-Host "::error::Dependance vulnerable de severite haute ou critique detectee."
+              exit 1
+          }
+          if ($output -match 'Moderate|Low') {
+              Write-Host "::warning::Vulnerabilites de severite moderee ou basse detectees."
+          }
+          Write-Host "Aucune vulnerabilite haute ou critique."
+
+  determinism-guard:
+    name: Garde-fou de determinisme (principe III)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verifier que Core ne depend pas de Windows et que les tests sont deterministes
+        run: dotnet test tests/NetworkLimiter.Core.Tests --filter Category=Determinism

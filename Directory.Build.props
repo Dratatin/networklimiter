@@ -1,0 +1,72 @@
+<Project>
+
+  <!--
+    Reglages communs a TOUS les projets de la solution.
+    Constitution v1.0.1, section « Contraintes techniques » :
+      .NET 10 LTS, nullable actif, avertissements traites en erreurs.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Un avertissement non traite devient une dette silencieuse. Sur du code qui
+      s'execute en LocalSystem et manipule des handles natifs, c'est inacceptable.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Builds reproductibles : necessaire pour que la signature ait un sens. -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!--
+      Fichiers de verrouillage NuGet : sans eux, `dotnet restore --locked-mode` en CI
+      echoue, et surtout le graphe transitif pourrait changer sans qu'aucune revue ne
+      le voie. La constitution exige des dependances epinglees ET auditees ; le verrou
+      est ce qui rend l'audit reproductible.
+    -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!--
+      Seule l'architecture x64 est supportee : WinDivert ne publie aucun pilote ARM64
+      et un pilote noyau ne s'execute pas sous l'emulation x64 (research.md, R-002).
+    -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier Condition="'$(IsTestProject)' != 'true'">win-x64</RuntimeIdentifier>
+
+    <!-- L'interop natif est confine au service ; ailleurs, unsafe est interdit. -->
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NeutralLanguage>fr-FR</NeutralLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Identite du produit">
+    <Product>NetworkLimiter</Product>
+    <Company>NetworkLimiter</Company>
+    <Version>0.1.0</Version>
+    <Copyright>Copyright (c) 2026</Copyright>
+  </PropertyGroup>
+
+  <!--
+    Les projets de test sont detectes par convention de nom. Ils n'embarquent pas de
+    RuntimeIdentifier et n'ont pas besoin de documentation XML.
+  -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

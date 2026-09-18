@@ -1,0 +1,51 @@
+<Project>
+
+  <!--
+    Gestion centralisee des versions de paquets.
+    Constitution v1.0.1 : « Les dependances MUST etre epinglees et auditees ».
+
+    Chaque version est fixee ici et nulle part ailleurs : aucun projet ne doit porter
+    d'attribut Version sur un PackageReference. Une montee de version est donc toujours
+    un changement visible en revue, jamais un effet de bord d'une restauration.
+
+    ATTENTION : ces versions n'ont pas encore ete confrontees a un `dotnet restore`
+    (aucun SDK .NET n'etait installe lors de leur redaction). Elles doivent etre
+    confirmees a la premiere restauration reussie.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Hebergement du service">
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Journalisation (principe VI)">
+    <PackageVersion Include="Serilog" Version="4.2.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.EventLog" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Interface">
+    <!-- MVVM par generateur de source : ViewModels testables sans WPF. -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <!--
+      FluentAssertions reste volontairement en 7.x : a partir de la 8.0, le paquet est
+      passe sous licence Xceed, payante pour tout usage commercial. La 7.x demeure sous
+      Apache-2.0. Ne pas monter en version sans decision explicite sur la licence.
+    -->
+    <PackageVersion Include="FluentAssertions" Version="7.2.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+</Project>

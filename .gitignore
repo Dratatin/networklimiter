@@ -5,6 +5,11 @@
 [Ll]ogs/
 artifacts/
 publish/
+build/
+
+## Verrous NuGet : VERSIONNES volontairement (RestorePackagesWithLockFile).
+## Ils rendent le graphe transitif auditable ; ne pas les ignorer.
+!packages.lock.json
 *.user
 *.suo
 *.userprefs

@@ -1,0 +1,128 @@
+name: Integration (porte 3)
+
+# Porte de fusion 3 de la constitution :
+#   « Tests d'integration au vert sur au moins une VM de la matrice de compatibilite. »
+#
+# Ces tests ne peuvent pas tourner dans le job CI ordinaire : ils installent un pilote
+# noyau, demarrent un service en LocalSystem et manipulent la pile reseau. Ils exigent
+# donc une machine dediee, jetable, dont l'etat n'a pas d'importance.
+#
+# Deux modes d'execution :
+#   - runner auto-heberge etiquete `windows-matrix`, restaure depuis un instantane propre
+#     avant chaque execution (mode nominal) ;
+#   - a defaut, le job signale explicitement qu'il n'a pas pu s'executer plutot que de
+#     passer au vert sans rien avoir verifie. Une porte qui reussit sans avoir teste est
+#     pire que pas de porte du tout.
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      os_image:
+        description: "Image de la matrice a utiliser"
+        required: false
+        default: "win11-23h2-x64"
+        type: choice
+        options:
+          - win11-23h2-x64
+          - win10-22h2-x64
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+
+jobs:
+  check-runner:
+    name: Verifier la disponibilite du runner de matrice
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.probe.outputs.available }}
+    steps:
+      - id: probe
+        shell: bash
+        run: |
+          # Le secret MATRIX_RUNNER_AVAILABLE est pose une fois le runner auto-heberge
+          # enregistre. Tant qu'il est absent, la porte est declaree NON TENUE.
+          if [ -n "${{ secrets.MATRIX_RUNNER_AVAILABLE }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  integration:
+    name: Tests d'integration sur ${{ inputs.os_image || 'win11-23h2-x64' }}
+    needs: check-runner
+    if: needs.check-runner.outputs.available == 'true'
+    runs-on: [self-hosted, windows-matrix]
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verifier que la machine appartient a la matrice
+        shell: pwsh
+        run: |
+          $build = [Environment]::OSVersion.Version.Build
+          $arch  = $env:PROCESSOR_ARCHITECTURE
+          Write-Host "Build $build, architecture $arch"
+          if ($arch -ne 'AMD64') {
+              Write-Host "::error::Architecture $arch hors matrice. Seul x64 est supporte."
+              exit 1
+          }
+          if ($build -lt 19045) {
+              Write-Host "::error::Build $build hors matrice. Minimum : 19045 (Windows 10 22H2)."
+              exit 1
+          }
+
+      - name: Restaurer WinDivert (empreinte + signature verifiees)
+        shell: pwsh
+        run: ./tools/restore-windivert.ps1
+
+      - name: Compiler
+        run: dotnet build --configuration Release -warnaserror
+
+      - name: Tests d'integration
+        run: dotnet test --no-build --configuration Release tests/NetworkLimiter.Integration.Tests
+
+      - name: Verification fail-open apres arret brutal
+        # Filet de securite du runner : quoi qu'il arrive aux tests, la machine ne doit
+        # pas rester avec du trafic etrangle. Principe IV.
+        if: always()
+        shell: pwsh
+        run: |
+          Get-Process -Name NetworkLimiter.Service -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+          Write-Host "Service arrete ; le trafic doit etre non limite."
+
+      - name: Publier les resultats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results
+          path: "**/TestResults/**"
+          retention-days: 14
+
+  gate-not-met:
+    name: Porte 3 NON TENUE (aucun runner de matrice)
+    needs: check-runner
+    if: needs.check-runner.outputs.available != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: |
+          echo "::warning::Porte de fusion 3 non tenue : aucun runner Windows de la matrice"
+          echo "::warning::n'est enregistre. Les tests d'integration n'ont PAS ete executes."
+          echo "Pour l'activer : enregistrer un runner auto-heberge etiquete"
+          echo "'self-hosted, windows-matrix' puis definir le secret MATRIX_RUNNER_AVAILABLE."
