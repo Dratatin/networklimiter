@@ -21,6 +21,12 @@ banc de mesure ou une VM propre — ce sont les portes de release 6 à 8 de la c
   signature Authenticode** avant de le placer dans l'arborescence de build. Un binaire noyau dont
   on n'a pas vérifié la provenance n'a rien à faire dans un build.
 
+**Suite d'intégration** : elle doit être lancée depuis une **invite élevée**. Elle
+enregistre un pilote noyau, pilote un service et pose des ACL avec reprise de propriété —
+trois opérations qui exigent des privilèges administrateur. Sans élévation, ses tests
+**échouent bruyamment** avec la marche à suivre plutôt que d'être ignorés : un test de
+sécurité silencieusement sauté laisse la suite verte pendant que la vérification a disparu.
+
 **Banc de mesure** (scénarios 6 et 7)
 
 - Deux VM Hyper-V sur un commutateur virtuel **interne**

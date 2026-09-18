@@ -4,6 +4,31 @@ using System.Security.Principal;
 
 namespace NetworkLimiter.Service.Persistence;
 
+/// <summary>Le répertoire de données ne peut pas être sécurisé.</summary>
+/// <remarks>
+/// Volontairement fatale pour la mise en forme : le service passe en mode dégradé sans
+/// appliquer de limite. Mieux vaut ne pas limiter que limiter derrière un verrou qu'on sait
+/// contournable — l'utilisateur croirait sa configuration protégée alors qu'elle ne l'est pas.
+/// </remarks>
+public sealed class ConfigNotSecurableException : Exception
+{
+    /// <inheritdoc cref="Exception(string, Exception)" />
+    public ConfigNotSecurableException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+
+    /// <inheritdoc cref="Exception(string)" />
+    public ConfigNotSecurableException(string message) : base(message)
+    {
+    }
+
+    /// <summary>Crée l'exception sans détail.</summary>
+    public ConfigNotSecurableException()
+    {
+    }
+}
+
 /// <summary>
 /// Pose et vérifie les permissions du répertoire de données.
 /// </summary>
@@ -15,9 +40,11 @@ namespace NetworkLimiter.Service.Persistence;
 /// verrou d'interface — contournable en quelques secondes.
 /// </para>
 /// <para>
-/// L'héritage est désactivé et les ACE sont explicites. Un répertoire qui hériterait des
-/// permissions de <c>%ProgramData%</c> laisserait les utilisateurs créer des fichiers, ce qui
-/// suffirait à contourner le verrou par remplacement.
+/// Trois éléments concourent au verrou, et il en manque un si l'on n'y pense pas : l'héritage
+/// désactivé, des ACE explicites, et la <b>propriété</b> du répertoire. Le propriétaire d'un
+/// objet Windows conserve <c>WRITE_DAC</c> quoi qu'il arrive : un répertoire créé par un
+/// utilisateur standard avant la première exécution du service lui reste ouvert, quelles que
+/// soient les permissions posées ensuite.
 /// </para>
 /// <para>
 /// La vérification est refaite à <b>chaque démarrage</b> : une permission élargie par un tiers
@@ -46,19 +73,41 @@ public static class ConfigAcl
         var directory = new DirectoryInfo(directoryPath);
         DirectorySecurity security = directory.GetAccessControl();
 
-        bool wasCorrect = IsAlreadySecured(security);
-
-        if (wasCorrect)
+        if (IsAlreadySecured(security))
         {
             return new AclCheckResult(WasCorrect: true, Diagnostic: null);
         }
 
-        directory.SetAccessControl(BuildSecurity());
+        bool ownerWasWrong = !IsOwnedByPrivilegedPrincipal(security);
 
-        return new AclCheckResult(
-            WasCorrect: false,
-            Diagnostic: $"Les permissions de « {directoryPath} » n'étaient pas conformes et ont été " +
-                        "rétablies : seuls SYSTEM et les administrateurs peuvent écrire.");
+        try
+        {
+            // BuildSecurity pose deja la propriete : un repertoire cree par un utilisateur
+            // standard avant la premiere execution du service lui appartient, et la propriete
+            // emporte WRITE_DAC — sans reprise, il pourrait defaire les restrictions qu'on
+            // vient de poser.
+            directory.SetAccessControl(BuildSecurity());
+        }
+        catch (Exception exception) when (
+            exception is UnauthorizedAccessException or InvalidOperationException or PrivilegeNotHeldException)
+        {
+            // Echouer bruyamment plutot que de laisser croire la configuration protegee. Le
+            // service passe alors en mode degrade, sans appliquer de limite : mieux vaut ne
+            // pas limiter que limiter avec un verrou qu'on sait contournable.
+            throw new ConfigNotSecurableException(
+                $"Impossible de sécuriser « {directoryPath} » : {exception.Message} " +
+                "Le service doit s'exécuter avec des privilèges suffisants pour poser les " +
+                "permissions du répertoire de données.",
+                exception);
+        }
+
+        string diagnostic = ownerWasWrong
+            ? $"Le répertoire « {directoryPath} » appartenait à un compte non privilégié, ce qui " +
+              "permettait d'en réécrire les permissions. Propriété et permissions ont été rétablies."
+            : $"Les permissions de « {directoryPath} » n'étaient pas conformes et ont été " +
+              "rétablies : seuls SYSTEM et les administrateurs peuvent écrire.";
+
+        return new AclCheckResult(WasCorrect: false, Diagnostic: diagnostic);
     }
 
     /// <summary>Construit les permissions attendues.</summary>
@@ -89,7 +138,48 @@ public static class ConfigAcl
         security.AddAccessRule(new FileSystemAccessRule(
             users, FileSystemRights.ReadAndExecute, Inheritance, PropagationFlags.None, AccessControlType.Allow));
 
+        // La propriete fait partie integrante de la securite attendue, pas d'un reglage a
+        // part : le proprietaire conserve WRITE_DAC et peut donc defaire toutes les ACE
+        // ci-dessus. La poser ici garantit qu'aucun appelant ne l'oublie.
+        security.SetOwner(administrators);
+
         return security;
+    }
+
+    /// <summary>
+    /// Indique si le propriétaire d'un répertoire est un principal privilégié.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Vérification indispensable, et facile à oublier : le <b>propriétaire</b> d'un objet
+    /// Windows conserve implicitement <c>WRITE_DAC</c>, c'est-à-dire le droit de réécrire
+    /// l'ACL — quelles que soient les ACE posées.
+    /// </para>
+    /// <para>
+    /// Conséquence concrète : si un utilisateur standard crée
+    /// <c>%ProgramData%\NetworkLimiter</c> <i>avant</i> la première exécution du service, il en
+    /// devient propriétaire, et toutes les restrictions posées ensuite lui restent
+    /// contournables. C'est un cas classique de squattage de répertoire, et le verrou de
+    /// FR-034 y tomberait sans qu'aucune ACE ne paraisse anormale.
+    /// </para>
+    /// </remarks>
+    public static bool IsOwnedByPrivilegedPrincipal(DirectorySecurity security)
+    {
+        ArgumentNullException.ThrowIfNull(security);
+
+        IdentityReference? owner = security.GetOwner(typeof(SecurityIdentifier));
+        if (owner is not SecurityIdentifier ownerSid)
+        {
+            return false;
+        }
+
+        var system = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+        var administrators = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+        var trustedInstaller = new SecurityIdentifier("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464");
+
+        return ownerSid.Equals(system) ||
+               ownerSid.Equals(administrators) ||
+               ownerSid.Equals(trustedInstaller);
     }
 
     /// <summary>Indique si des permissions données sont conformes à l'attendu.</summary>
@@ -98,6 +188,11 @@ public static class ConfigAcl
         ArgumentNullException.ThrowIfNull(security);
 
         if (!security.AreAccessRulesProtected)
+        {
+            return false;
+        }
+
+        if (!IsOwnedByPrivilegedPrincipal(security))
         {
             return false;
         }

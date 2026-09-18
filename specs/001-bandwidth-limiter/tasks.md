@@ -122,7 +122,7 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 - [X] T051 [P] Écrire les tests d'écriture atomique dans `tests/NetworkLimiter.Service.Tests/Persistence/AtomicWriteTests.cs` : interruption simulée à chaque étape → relecture de l'ancien **ou** du nouveau contenu, jamais d'un fichier tronqué
 - [X] T052 Implémenter `ConfigStore` dans `src/NetworkLimiter.Service/Persistence/ConfigStore.cs` : `%ProgramData%\NetworkLimiter\config.json`, `schemaVersion=1`, séquence temporaire → flush → `File.Replace` → suppression de la sauvegarde
-- [ ] T053 Écrire le test d'ACL dans `tests/NetworkLimiter.Integration.Tests/Security/ConfigAclTests.cs` (SC-013) : sous un compte standard, écriture, remplacement, renommage et modification d'ACL tous refusés
+- [X] T053 Écrire le test d'ACL dans `tests/NetworkLimiter.Integration.Tests/Security/ConfigAclTests.cs` (SC-013) : sous un compte standard, écriture, remplacement, renommage et modification d'ACL tous refusés
 - [X] T054 Implémenter la pose et la **revérification au démarrage** des ACL dans `src/NetworkLimiter.Service/Persistence/ConfigAcl.cs` : héritage désactivé, `SYSTEM` et `Administrators` en contrôle total, `Users` en lecture seule, correction et journalisation si trouvée trop permissive
 
 ### Déploiement minimal

@@ -154,59 +154,52 @@ public sealed class ConfigAclTests : IDisposable
         act.Should().Throw<ArgumentNullException>();
     }
 
-    // -- Application réelle sur le disque -------------------------------------
+    // -- Propriété du répertoire ----------------------------------------------
 
     [Fact]
-    public void EnsureSecured_CreeLeRepertoireEtPoseLesPermissions()
+    public void PermissionsConstruites_AppartiennentAuxAdministrateurs()
     {
-        ConfigAcl.AclCheckResult result = ConfigAcl.EnsureSecured(_directory);
+        // Le proprietaire d'un objet Windows conserve implicitement WRITE_DAC : il peut
+        // reecrire l'ACL quelles que soient les ACE posees.
+        DirectorySecurity security = ConfigAcl.BuildSecurity();
+        security.SetOwner(Administrators);
 
-        Directory.Exists(_directory).Should().BeTrue();
-        result.WasCorrect.Should().BeFalse("le répertoire vient d'être créé, ses ACL héritaient");
-
-        DirectorySecurity applied = new DirectoryInfo(_directory).GetAccessControl();
-        applied.AreAccessRulesProtected.Should().BeTrue();
-        ConfigAcl.IsAlreadySecured(applied).Should().BeTrue();
+        ConfigAcl.IsOwnedByPrivilegedPrincipal(security).Should().BeTrue();
     }
 
     [Fact]
-    public void EnsureSecured_EstIdempotent()
+    public void RepertoirePossedeParUnUtilisateurStandard_EstReconnuNonConforme()
     {
-        // Appele a chaque demarrage : le second passage ne doit signaler aucune correction,
-        // sans quoi le journal se remplirait d'avertissements sans objet.
-        ConfigAcl.EnsureSecured(_directory);
+        // Le cas d'attaque : un utilisateur cree %ProgramData%\NetworkLimiter AVANT la
+        // premiere execution du service. Il en devient proprietaire, et toutes les
+        // restrictions posees ensuite lui restent contournables. Aucune ACE ne parait
+        // anormale — seule la propriete trahit le probleme.
+        DirectorySecurity security = ConfigAcl.BuildSecurity();
+        security.SetOwner(WindowsIdentity.GetCurrent().User!);
 
-        ConfigAcl.AclCheckResult second = ConfigAcl.EnsureSecured(_directory);
-
-        second.WasCorrect.Should().BeTrue();
-        second.Diagnostic.Should().BeNull();
+        ConfigAcl.IsOwnedByPrivilegedPrincipal(security).Should().BeFalse();
+        ConfigAcl.IsAlreadySecured(security).Should().BeFalse(
+            "la propriété emporte le droit de réécrire l'ACL");
     }
 
     [Fact]
-    public void EnsureSecured_CorrigeUnRelachementEtLeSignale()
+    public void ProprieteSystem_EstAcceptee()
     {
-        ConfigAcl.EnsureSecured(_directory);
+        DirectorySecurity security = ConfigAcl.BuildSecurity();
+        security.SetOwner(System);
 
-        var directory = new DirectoryInfo(_directory);
-        DirectorySecurity relaxed = directory.GetAccessControl();
-        relaxed.AddAccessRule(new FileSystemAccessRule(
-            Users, FileSystemRights.FullControl,
-            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-            PropagationFlags.None, AccessControlType.Allow));
-        directory.SetAccessControl(relaxed);
-
-        ConfigAcl.AclCheckResult result = ConfigAcl.EnsureSecured(_directory);
-
-        result.WasCorrect.Should().BeFalse();
-        result.Diagnostic.Should().NotBeNullOrWhiteSpace();
-        ConfigAcl.IsAlreadySecured(directory.GetAccessControl()).Should().BeTrue();
+        ConfigAcl.IsOwnedByPrivilegedPrincipal(security).Should().BeTrue();
     }
 
     [Fact]
-    public void EnsureSecured_CheminVide_Leve()
+    public void IsOwnedByPrivilegedPrincipal_SansPermissions_Leve()
     {
-        Action act = () => ConfigAcl.EnsureSecured("   ");
+        Action act = () => ConfigAcl.IsOwnedByPrivilegedPrincipal(null!);
 
-        act.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentNullException>();
     }
+
+    // Les tests qui touchent reellement au disque vivent desormais dans la suite
+    // d'integration : poser une ACL avec reprise de propriete exige des privileges
+    // administrateur, que la suite unitaire n'a pas et ne doit pas exiger.
 }
