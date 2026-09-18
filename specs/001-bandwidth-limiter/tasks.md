@@ -173,7 +173,7 @@ et vérifier le retour au débit nominal.
 - [ ] T073 [US1] Implémenter l'éditeur de règle dans `src/NetworkLimiter.App/Views/RuleEditorView.xaml` avec validation des bornes **à la saisie** et unité toujours visible (FR-007)
 - [X] T074 [US1] Implémenter le mode lecture seule dans `src/NetworkLimiter.App/ViewModels/ShellViewModel.cs` : commandes visibles mais désactivées avec la raison affichée (FR-034b)
 - [X] T075 [US1] Implémenter la relance élevée dans `src/NetworkLimiter.App/Elevation/ElevationLauncher.cs` : `ShellExecute` verbe `runas` sur le même exécutable avec `--elevated`, une seule invite par session d'édition
-- [ ] T076 [US1] Journaliser l'application et le retrait de chaque règle dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs` **sans** adresse distante, nom d'hôte ni URL (FR-033)
+- [X] T076 [US1] Journaliser l'application et le retrait de chaque règle dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs` **sans** adresse distante, nom d'hôte ni URL (FR-033)
 
 **Checkpoint**: US1 pleinement fonctionnelle et testable seule. Scénario 5 de quickstart.md
 exécutable.

@@ -141,7 +141,7 @@ public sealed class ShapingCoordinator
 
         foreach (RuleDto rule in _rules)
         {
-            RuleInactiveReason? reason = DetermineInactiveReason(rule, runningPaths);
+            RuleInactiveReason? reason = GetInactiveReason(rule, runningPaths);
 
             if (reason is { } value)
             {
@@ -152,8 +152,22 @@ public sealed class ShapingCoordinator
         return inactive;
     }
 
-    private RuleInactiveReason? DetermineInactiveReason(RuleDto rule, IReadOnlySet<string> runningPaths)
+    /// <summary>
+    /// Rend la raison pour laquelle une règle ne s'applique pas, ou <c>null</c> si elle s'applique.
+    /// </summary>
+    /// <remarks>
+    /// Publique, et appelée <b>règle par règle</b> par ce qui compose l'état affiché. La version
+    /// précédente ne répondait que pour son propre jeu de règles : une règle qu'elle n'avait pas
+    /// encore reçue passait pour « active » faute de raison d'inactivité trouvée. C'était le
+    /// défaut le plus trompeur possible — afficher comme appliqué un plafond dont rien ne
+    /// garantissait qu'il l'était.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Un argument est <c>null</c>.</exception>
+    public RuleInactiveReason? GetInactiveReason(RuleDto rule, IReadOnlySet<string> runningPaths)
     {
+        ArgumentNullException.ThrowIfNull(rule);
+        ArgumentNullException.ThrowIfNull(runningPaths);
+
         // L'ordre compte : on nomme la cause la plus englobante d'abord. Dire « application
         // non lancee » alors que toute la limitation est suspendue enverrait l'utilisateur
         // chercher au mauvais endroit.

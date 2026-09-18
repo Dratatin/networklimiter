@@ -28,6 +28,10 @@ namespace NetworkLimiter.Contracts.Serialization;
 [JsonSerializable(typeof(GlobalLimitDto))]
 [JsonSerializable(typeof(ProfileDto))]
 [JsonSerializable(typeof(PersistedConfig))]
+[JsonSerializable(typeof(RuleStateDto))]
+[JsonSerializable(typeof(ProfileStateDto))]
+[JsonSerializable(typeof(GetStateResultPayload))]
+[JsonSerializable(typeof(StateChangedPayload))]
 internal sealed partial class MessageJsonContext : JsonSerializerContext;
 
 /// <summary>

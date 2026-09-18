@@ -6,6 +6,8 @@ using NetworkLimiter.Core.Shaping;
 using NetworkLimiter.Service.FlowTable;
 using NetworkLimiter.Service.Health;
 using NetworkLimiter.Service.Interception;
+using NetworkLimiter.Service.Ipc;
+using NetworkLimiter.Service.Ipc.Handlers;
 using NetworkLimiter.Service.Persistence;
 using NetworkLimiter.Service.ProcessIdentity;
 using NetworkLimiter.Service.Resilience;
@@ -47,6 +49,15 @@ internal sealed class InterceptionWorker : BackgroundService
     private RuleStore? _ruleStore;
     private string? _degradedReason;
     private long[] _lastCounters = [];
+    private IpcListener? _listener;
+    private StateBroadcaster? _broadcaster;
+    private ServiceStateProvider? _stateProvider;
+
+    private static readonly IReadOnlySet<string> EmptyPaths = new HashSet<string>(StringComparer.Ordinal);
+
+    /// <summary>Version annoncée à l'interface lors de la poignée de main.</summary>
+    private static string ServiceVersion =>
+        typeof(InterceptionWorker).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
     public InterceptionWorker(ILogger log, TimeProvider clock)
     {
@@ -123,6 +134,10 @@ internal sealed class InterceptionWorker : BackgroundService
             _ruleStore.Changed += OnConfigurationChanged;
             _coordinator!.Apply(_ruleStore.ActiveRules);
             _pipeline!.Start();
+
+            // Le canal de controle vient APRES le pipeline : une interface qui se connecte doit
+            // trouver un etat deja vrai, pas un service en cours d'assemblage.
+            StartIpc();
 
             _log.Information(
                 "Interception active, {Regles} règle(s) dans le profil « {Profil} ».",
@@ -213,6 +228,69 @@ internal sealed class InterceptionWorker : BackgroundService
         _pipeline = pipeline;
     }
 
+    /// <summary>
+    /// Ouvre le canal de contrôle, sans jamais compromettre la limitation.
+    /// </summary>
+    /// <remarks>
+    /// Un échec ici n'arrête rien : les règles sont chargées et le pipeline tourne déjà. Seule
+    /// l'interface devient injoignable — gênant, mais sans effet sur le réseau de l'utilisateur.
+    /// Traiter l'IPC comme critique inverserait exactement la priorité du principe IV.
+    /// </remarks>
+    private void StartIpc()
+    {
+        try
+        {
+            _stateProvider = new ServiceStateProvider(
+                _ruleStore!,
+                _coordinator!,
+                () => _pipeline?.RunningPaths ?? EmptyPaths);
+
+            var dispatcher = new RequestDispatcher(
+                new RuleHandlers(_ruleStore!, _log),
+                _stateProvider,
+                _log);
+
+            _broadcaster = new StateBroadcaster();
+            dispatcher.StateWritten += OnStateWritten;
+
+            _listener = new IpcListener(dispatcher, _broadcaster, ServiceVersion, _log);
+            _listener.Start();
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+        {
+            _log.Error(exception,
+                "Canal de contrôle indisponible : l'interface ne pourra pas se connecter. " +
+                "La limitation reste active.");
+        }
+    }
+
+    private void OnStateWritten(object? sender, EventArgs args) => BroadcastState();
+
+    private void BroadcastState()
+    {
+        if (_broadcaster is null || _stateProvider is null || _broadcaster.TargetCount == 0)
+        {
+            return;
+        }
+
+        GetStateResultPayload state = _stateProvider.GetState();
+
+        // Diffusion detachee : une interface lente ou morte ne doit pas retarder l'ecriture qui
+        // vient d'aboutir, ni la boucle de maintenance.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _broadcaster.BroadcastAsync(state, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                _log.Warning(exception, "Diffusion de l'état interrompue.");
+            }
+        });
+    }
+
     private void RunMaintenance()
     {
         ReportCounters();
@@ -267,6 +345,10 @@ internal sealed class InterceptionWorker : BackgroundService
         _log.Information(
             "Règles réappliquées : {Regles} règle(s) actives.",
             config.ActiveProfile.Rules.Count(rule => rule.Enabled));
+
+        // La diffusion suit l'APPLICATION, pas l'ecriture : l'interface doit refleter ce qui
+        // s'applique vraiment, pas ce qui vient d'etre enregistre.
+        BroadcastState();
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
@@ -274,6 +356,7 @@ internal sealed class InterceptionWorker : BackgroundService
         // Liberer le trafic AVANT toute autre chose : c'est le geste qui rend le reseau a
         // l'utilisateur, et il ne doit dependre d'aucune etape ulterieure (principe IV).
         _pipeline?.CloseAll();
+        _listener?.Stop();
         _networkMonitor?.Stop();
 
         if (_ruleStore is not null)
@@ -286,6 +369,7 @@ internal sealed class InterceptionWorker : BackgroundService
 
     public override void Dispose()
     {
+        _listener?.Dispose();
         _pipeline?.Dispose();
         _networkMonitor?.Dispose();
         base.Dispose();
