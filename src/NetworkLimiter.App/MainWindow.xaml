@@ -57,6 +57,14 @@
 
             <!-- Applications observées (T072) -->
             <DockPanel Grid.Column="0">
+                <!--
+                    L'état de santé en haut à gauche : c'est la première chose à lire quand
+                    quelque chose ne marche pas, avant même de chercher sa règle.
+                -->
+                <views:HealthView DockPanel.Dock="Top"
+                                  DataContext="{Binding Health}"
+                                  Margin="0,0,0,10" />
+
                 <TextBlock DockPanel.Dock="Top"
                            Text="Applications qui communiquent"
                            FontWeight="SemiBold"

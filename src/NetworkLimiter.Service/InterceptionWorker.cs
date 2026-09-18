@@ -249,9 +249,19 @@ internal sealed class InterceptionWorker : BackgroundService
             _suspension = new SuspensionController(_coordinator!, _ruleStore!);
             _suspension.Changed += (_, _) => BroadcastState();
 
+            var healthProvider = new ServiceHealthProvider(
+                _coordinator!,
+                _suspension,
+                () => _ruleStore!.ActiveRules,
+                () => _pipeline?.RunningPaths ?? EmptyPaths,
+                new SystemNetworkAdapterSource(),
+                () => _degradedReason,
+                ServiceVersion);
+
             var dispatcher = new RequestDispatcher(
                 new RuleHandlers(_ruleStore!, _log),
                 _stateProvider,
+                healthProvider,
                 _suspension,
                 _log);
 

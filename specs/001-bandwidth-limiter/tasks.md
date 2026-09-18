@@ -287,9 +287,9 @@ retour au débit nominal en < 5 s ; puis arrêter brutalement le service et vér
 ### Implementation for User Story 5
 
 - [X] T117 [US5] Implémenter `SetSuspended` et le contournement du pipeline dans `src/NetworkLimiter.Service/Safety/SuspensionController.cs` (FR-024)
-- [ ] T118 [US5] Implémenter le panneau d'état de santé dans `src/NetworkLimiter.App/Views/HealthView.xaml` : service joignable, pilote chargé, nombre de règles actives, **raison pour chaque règle inactive** (FR-026)
-- [ ] T119 [US5] Implémenter la détection d'adaptateur VPN et l'avertissement associé dans `src/NetworkLimiter.Service/Health/VpnDetector.cs` (FR-037, FR-040c) — détecter et avertir, jamais garantir
-- [ ] T120 [US5] Implémenter les messages de mode dégradé dans `src/NetworkLimiter.App/ViewModels/HealthViewModel.cs` : pilote absent, système hors matrice, configuration corrompue, chacun avec sa cause et son action corrective
+- [X] T118 [US5] Implémenter le panneau d'état de santé dans `src/NetworkLimiter.App/Views/HealthView.xaml` : service joignable, pilote chargé, nombre de règles actives, **raison pour chaque règle inactive** (FR-026)
+- [X] T119 [US5] Implémenter la détection d'adaptateur VPN et l'avertissement associé dans `src/NetworkLimiter.Service/Health/VpnDetector.cs` (FR-037, FR-040c) — détecter et avertir, jamais garantir
+- [X] T120 [US5] Implémenter les messages de mode dégradé dans `src/NetworkLimiter.App/ViewModels/HealthViewModel.cs` : pilote absent, système hors matrice, configuration corrompue, chacun avec sa cause et son action corrective
 - [ ] T121 [US5] Implémenter l'icône de zone de notification et la suspension rapide dans `src/NetworkLimiter.App/Views/TrayIcon.cs`
 - [ ] T122 [US5] Implémenter les conditions de lancement du MSI dans `src/NetworkLimiter.Installer/Conditions.wxs` : **blocage ARM64** avec message nommant l'absence de pilote WinDivert ARM64, blocage x86, blocage build < 19045
 - [ ] T123 [US5] Implémenter la séquence de désinstallation ordonnée dans `src/NetworkLimiter.Installer/Uninstall.wxs` : arrêt du service → fermeture des handles → suppression du service pilote → suppression des fichiers → suppression de `%ProgramData%`

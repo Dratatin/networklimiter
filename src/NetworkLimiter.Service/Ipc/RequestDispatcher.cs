@@ -25,6 +25,7 @@ public sealed class RequestDispatcher
 {
     private readonly RuleHandlers _ruleHandlers;
     private readonly IStateSource _state;
+    private readonly IHealthSource _health;
     private readonly SuspensionController _suspension;
     private readonly ILogger _log;
 
@@ -33,16 +34,19 @@ public sealed class RequestDispatcher
     public RequestDispatcher(
         RuleHandlers ruleHandlers,
         IStateSource state,
+        IHealthSource health,
         SuspensionController suspension,
         ILogger log)
     {
         ArgumentNullException.ThrowIfNull(ruleHandlers);
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(health);
         ArgumentNullException.ThrowIfNull(suspension);
         ArgumentNullException.ThrowIfNull(log);
 
         _ruleHandlers = ruleHandlers;
         _state = state;
+        _health = health;
         _suspension = suspension;
         _log = log;
     }
@@ -96,6 +100,12 @@ public sealed class RequestDispatcher
                     request.Id,
                     MessageTypes.GetState + MessageTypes.ResultSuffix,
                     _state.GetState());
+
+            case MessageTypes.GetHealth:
+                return MessageEnvelope.CreateResult(
+                    request.Id,
+                    MessageTypes.GetHealth + MessageTypes.ResultSuffix,
+                    _health.GetHealth());
 
             case MessageTypes.UpsertRule:
                 return AfterWrite(_ruleHandlers.Upsert(request));

@@ -62,6 +62,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Règles du profil actif.</summary>
     public RuleListViewModel Rules { get; } = new();
 
+    /// <summary>État de santé, et ce qu'il faut en faire.</summary>
+    public HealthViewModel Health { get; } = new();
+
     [ObservableProperty]
     private RuleEditorSessionViewModel? _editor;
 
@@ -159,6 +162,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 MessageSerializer.ReadPayload<GetStateResultPayload>(response);
 
             await _dispatcher.InvokeAsync(() => Apply(state)).ConfigureAwait(false);
+            await RefreshHealthAsync().ConfigureAwait(false);
         }
         catch (Exception exception) when (
             exception is IOException or ObjectDisposedException or System.Text.Json.JsonException)
@@ -168,6 +172,39 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         catch (OperationCanceledException)
         {
             // Fermeture en cours.
+        }
+    }
+
+    /// <summary>
+    /// Redemande l'état de santé.
+    /// </summary>
+    /// <remarks>
+    /// Un échec ici ne doit pas effacer l'état déjà affiché : l'utilisateur perdrait la liste
+    /// de ses règles à cause d'un diagnostic indisponible, alors que les deux sont indépendants.
+    /// </remarks>
+    private async Task RefreshHealthAsync()
+    {
+        try
+        {
+            MessageEnvelope response = await _client
+                .SendAsync(MessageEnvelope.CreateRequest(MessageTypes.GetHealth), _stopping.Token)
+                .ConfigureAwait(false);
+
+            if (response.Ok != true)
+            {
+                return;
+            }
+
+            HealthResultPayload health = MessageSerializer.ReadPayload<HealthResultPayload>(response);
+
+            await _dispatcher.InvokeAsync(() => Health.Health = health).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is IOException or ObjectDisposedException or System.Text.Json.JsonException
+                      or OperationCanceledException)
+        {
+            // Silencieux : la liaison rompue est deja signalee ailleurs, et la repeter ici
+            // afficherait deux fois le meme probleme.
         }
     }
 

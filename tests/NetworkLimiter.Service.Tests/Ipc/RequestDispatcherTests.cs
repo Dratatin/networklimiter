@@ -46,14 +46,76 @@ public sealed class RequestDispatcherTests : IDisposable
 
         Suspension = new SuspensionController(coordinator, _rules);
 
+        Health = new ServiceHealthProvider(
+            coordinator,
+            Suspension,
+            () => _rules.ActiveRules,
+            () => RunningPaths,
+            new NoAdapters(),
+            () => null,
+            "1.0.0");
+
         _dispatcher = new RequestDispatcher(
             new RuleHandlers(_rules, Serilog.Core.Logger.None),
             new ServiceStateProvider(_rules, coordinator, () => RunningPaths),
+            Health,
             Suspension,
             Serilog.Core.Logger.None);
     }
 
     private SuspensionController Suspension { get; }
+
+    private ServiceHealthProvider Health { get; }
+
+    [Fact]
+    public void LEtatDeSante_EstLisibleSansElevation()
+    {
+        // Un utilisateur sans droits doit pouvoir DIAGNOSTIQUER. Exiger une elevation pour
+        // lire l'etat de sante le priverait de toute explication au moment ou il en a besoin.
+        MessageEnvelope response = _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(MessageTypes.GetHealth), callerIsElevated: false);
+
+        response.Ok.Should().BeTrue();
+
+        HealthResultPayload health = MessageSerializer.ReadPayload<HealthResultPayload>(response);
+        health.ServiceVersion.Should().Be("1.0.0");
+    }
+
+    [Fact]
+    public void LEtatDeSante_DistingueLaSuspensionDeLIndisponibilite()
+    {
+        Suspension.Suspend();
+
+        HealthResultPayload health = MessageSerializer.ReadPayload<HealthResultPayload>(
+            _dispatcher.Dispatch(
+                MessageEnvelope.CreateRequest(MessageTypes.GetHealth), callerIsElevated: false));
+
+        // Deux causes tres differentes d'« aucune limite appliquee ». Les confondre enverrait
+        // l'utilisateur reinstaller un pilote qui fonctionne parfaitement.
+        health.Suspended.Should().BeTrue();
+        health.InterceptionActive.Should().BeFalse("rien ne s'applique pendant une suspension");
+        health.DriverLoaded.Should().BeTrue("le pilote n'y est pour rien");
+    }
+
+    [Fact]
+    public void LEtatDeSante_CompteLesReglesInactives()
+    {
+        _dispatcher.Dispatch(
+            MessageEnvelope.CreateRequest(MessageTypes.UpsertRule, BuildUpsert(@"c:\absent\rien.exe")),
+            callerIsElevated: true);
+
+        HealthResultPayload health = MessageSerializer.ReadPayload<HealthResultPayload>(
+            _dispatcher.Dispatch(
+                MessageEnvelope.CreateRequest(MessageTypes.GetHealth), callerIsElevated: false));
+
+        health.InactiveRuleCount.Should().Be(1);
+        health.ActiveRuleCount.Should().Be(0);
+    }
+
+    private sealed class NoAdapters : NetworkLimiter.Service.Health.INetworkAdapterSource
+    {
+        public IReadOnlyList<NetworkLimiter.Service.Health.NetworkAdapter> GetAdapters() => [];
+    }
 
     [Fact]
     public void LaSuspension_ExigeUneElevation()
