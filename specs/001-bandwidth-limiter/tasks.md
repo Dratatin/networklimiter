@@ -73,10 +73,10 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Contrat IPC (Contracts)
 
-- [ ] T022 [P] Écrire les tests de sérialisation dans `tests/NetworkLimiter.Contracts.Tests/SerializationTests.cs` : aller-retour de chaque message, **rejet de tout champ inconnu**, refus de la désérialisation polymorphe
-- [ ] T023 [P] Définir les types de message de `contracts/ipc-protocol.md` dans `src/NetworkLimiter.Contracts/Messages/` et le `JsonSerializerContext` **par générateur de source** dans `src/NetworkLimiter.Contracts/Serialization/`
-- [ ] T024 [P] Écrire les tests de cadrage dans `tests/NetworkLimiter.Contracts.Tests/FramingTests.cs` : préfixe de longueur 4 octets petit-boutiste, message de **65 537 octets rejeté sans désérialisation**, JSON tronqué, profondeur excessive, clés dupliquées
-- [ ] T025 [P] Implémenter le codec de cadrage dans `src/NetworkLimiter.Contracts/Serialization/MessageFraming.cs` avec plafond de **65 536 octets**
+- [X] T022 [P] Écrire les tests de sérialisation dans `tests/NetworkLimiter.Contracts.Tests/SerializationTests.cs` : aller-retour de chaque message, **rejet de tout champ inconnu**, refus de la désérialisation polymorphe
+- [X] T023 [P] Définir les types de message de `contracts/ipc-protocol.md` dans `src/NetworkLimiter.Contracts/Messages/` et le `JsonSerializerContext` **par générateur de source** dans `src/NetworkLimiter.Contracts/Serialization/`
+- [X] T024 [P] Écrire les tests de cadrage dans `tests/NetworkLimiter.Contracts.Tests/FramingTests.cs` : préfixe de longueur 4 octets petit-boutiste, message de **65 537 octets rejeté sans désérialisation**, JSON tronqué, profondeur excessive, clés dupliquées
+- [X] T025 [P] Implémenter le codec de cadrage dans `src/NetworkLimiter.Contracts/Serialization/MessageFraming.cs` avec plafond de **65 536 octets**
 
 ### Canal IPC et autorisation (Service)
 
