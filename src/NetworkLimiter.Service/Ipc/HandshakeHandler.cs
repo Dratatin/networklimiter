@@ -39,7 +39,24 @@ public sealed class HandshakeHandler
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(callerIdentity);
 
-        byte[]? raw = await MessageFraming.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
+        byte[]? raw;
+        try
+        {
+            raw = await MessageFraming.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is IOException                 // tuyau rompu : le client a disparu
+                      or ObjectDisposedException     // le flux a ete ferme sous nos pieds
+                      or EndOfStreamException)       // deconnexion en plein message
+        {
+            // Un client qui se deconnecte brutalement est un evenement COURANT, pas une
+            // defaillance : l'interface est fermee, la session se termine, le processus est
+            // tue. Laisser l'exception remonter ferait tomber la boucle de connexion du
+            // service a chaque fois — c'est-a-dire qu'un utilisateur non privilegie pourrait
+            // arreter le service en boucle simplement en ouvrant et fermant des connexions.
+            return false;
+        }
+
         if (raw is null)
         {
             // Fin de flux propre avant toute poignee de main : rien a repondre.
@@ -95,7 +112,15 @@ public sealed class HandshakeHandler
     {
         MessageEnvelope error = MessageEnvelope.CreateError(requestId, code, message);
 
-        await MessageFraming.WriteAsync(
-            stream, MessageSerializer.SerializeToUtf8Bytes(error), cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await MessageFraming.WriteAsync(
+                stream, MessageSerializer.SerializeToUtf8Bytes(error), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+        {
+            // Le client a disparu avant de lire notre refus. Il n'y a rien a faire de plus,
+            // et surtout rien qui justifie de faire tomber la boucle de connexion.
+        }
     }
 }

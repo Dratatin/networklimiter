@@ -153,16 +153,27 @@ public sealed class HandshakeRoundTripTests
     [Fact]
     public async Task ClientQuiFermeAvantDEnvoyer_NeFaitPasEchouerLeService()
     {
+        // Le client se connecte puis disparait sans rien envoyer : interface fermee, session
+        // terminee, processus tue. C'est un evenement COURANT, pas une defaillance. Si la
+        // poignee de main levait ici, un utilisateur non privilegie pourrait faire tomber la
+        // boucle de connexion du service simplement en ouvrant et fermant des connexions.
         string pipeName = UniquePipeName();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
         await using var server = new NamedPipeServerStream(
             pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
+        // Le serveur signale qu'il a ACCEPTE la connexion avant que le test ne ferme le
+        // client. Sans cette synchronisation, la fermeture pouvait survenir pendant
+        // WaitForConnectionAsync et l'echec venait du test lui-meme, pas du produit.
+        var accepted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         Task<bool> serverTask = Task.Run(
             async () =>
             {
                 await server.WaitForConnectionAsync(cts.Token);
+                accepted.SetResult();
+
                 var handler = new HandshakeHandler("1.0.0");
                 return await handler.PerformAsync(server, new FakeCallerIdentity(false), cts.Token);
             },
@@ -170,6 +181,7 @@ public sealed class HandshakeRoundTripTests
 
         var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         await client.ConnectAsync(cts.Token);
+        await accepted.Task.WaitAsync(cts.Token);
         await client.DisposeAsync();
 
         (await serverTask).Should().BeFalse();
