@@ -167,7 +167,7 @@ et vérifier le retour au débit nominal.
 - [X] T067 [US1] Implémenter `ShapingPipeline` dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs` : paquet → flux → PID → application → règle → seau → réinjection, avec passage sans limitation pour `scope != Internet` et pour tout flux inconnu
 - [X] T068 [US1] Implémenter la politique de rejet dans `src/NetworkLimiter.Core/Shaping/DropPolicy.cs` : temporisation quand le protocole dispose d'un contrôle de congestion (FR-003c, zéro rejet), rejet uniquement en descendant sans contrôle de congestion avec tolérance 20 % (FR-003a)
 - [X] T069 [US1] Implémenter les gestionnaires `UpsertRule`, `DeleteRule`, `SetRuleEnabled` dans `src/NetworkLimiter.Service/Ipc/Handlers/RuleHandlers.cs`, **transactionnels du point de vue de l'appelant** : validation complète → application mémoire → persistance atomique, échec à toute étape laissant l'état inchangé
-- [ ] T070 [US1] Propager les changements de règle au pipeline vivant en < 5 s, sans recréer les seaux existants, dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs`
+- [X] T070 [US1] Propager les changements de règle au pipeline vivant en < 5 s, sans recréer les seaux existants, dans `src/NetworkLimiter.Service/Interception/ShapingPipeline.cs`
 - [X] T071 [US1] Diffuser `StateChanged` à **tous** les clients connectés, y compris non élevés, dans `src/NetworkLimiter.Service/Ipc/StateBroadcaster.cs`
 - [ ] T072 [US1] Implémenter la liste minimale des applications ayant une activité réseau dans `src/NetworkLimiter.App/ViewModels/AppListViewModel.cs`
 - [ ] T073 [US1] Implémenter l'éditeur de règle dans `src/NetworkLimiter.App/Views/RuleEditorView.xaml` avec validation des bornes **à la saisie** et unité toujours visible (FR-007)
