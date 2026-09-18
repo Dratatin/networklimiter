@@ -206,7 +206,11 @@ internal static class Diagnostics
 
         1060 => "Le service du pilote n'existe pas. Executez ./tools/register-windivert-dev.ps1.",
 
-        1275 or 1450 => "Ressources insuffisantes ou chargement bloque par le systeme.",
+        654 => "Une version differente du pilote a ete chargee puis dechargee. Redemarrez la machine.",
+
+        1450 => "Ressources systeme insuffisantes pour charger le pilote.",
+
+        87 => "Filtre, couche, priorite ou drapeaux d'ouverture invalides.",
 
         _ => "Code d'erreur Windows inattendu. Notez-le : il identifie la cause exacte.",
     };

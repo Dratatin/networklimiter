@@ -122,7 +122,12 @@ internal static partial class WinDivertNative
     /// <summary>Taille maximale d'un paquet, en octets.</summary>
     public const int MtuMax = 40 + 0xFFFF;
 
-    [LibraryImport(Library, EntryPoint = "WinDivertOpen", StringMarshalling = StringMarshalling.Utf8)]
+    // SetLastError est INDISPENSABLE ici. Sans lui, le runtime ne capture pas l'erreur
+    // Windows et Marshal.GetLastWin32Error() rend une valeur residuelle arbitraire : un
+    // echec d'ouverture remonte alors un code faux — ou zero — et devient indiagnosticable.
+    // Un test de garde verifie que TOUTE liaison de ce fichier porte cet attribut.
+    [LibraryImport(Library, EntryPoint = "WinDivertOpen",
+                   StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
     internal static partial WinDivertHandle Open(
         string filter,
@@ -189,7 +194,12 @@ internal static partial class WinDivertNative
     /// C'est ce qui permet de valider nos chaînes de filtre contre le <b>vrai</b> compilateur
     /// de WinDivert dans les tests, au lieu de se contenter d'inspecter du texte.
     /// </remarks>
-    [LibraryImport(Library, EntryPoint = "WinDivertHelperCompileFilter", StringMarshalling = StringMarshalling.Utf8)]
+    // Cette fonction rapporte ses erreurs par parametres de sortie, pas par GetLastError.
+    // L'attribut est neanmoins pose : son cout est negligeable, et une regle sans exception
+    // se verifie mecaniquement, alors qu'une exception « justifiee » doit etre retenue par
+    // chaque relecteur — c'est ainsi qu'on finit par en oublier une vraie.
+    [LibraryImport(Library, EntryPoint = "WinDivertHelperCompileFilter",
+                   StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static unsafe partial bool HelperCompileFilter(
