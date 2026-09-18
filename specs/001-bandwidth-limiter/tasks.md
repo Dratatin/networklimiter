@@ -281,7 +281,7 @@ retour au débit nominal en < 5 s ; puis arrêter brutalement le service et vér
 
 - [X] T113 [P] [US5] Écrire les tests de suspension dans `tests/NetworkLimiter.Service.Tests/Safety/SuspensionTests.cs` : toutes limites levées en < 5 s, **règles conservées** pour réactivation
 - [ ] T114 [P] [US5] Écrire le test d'arrêt brutal dans `tests/NetworkLimiter.Integration.Tests/Safety/AbruptTerminationTests.cs` : `TerminateProcess` répété sur le service → trafic non limité à **100 %** des essais (SC-009)
-- [ ] T115 [P] [US5] Écrire le test de raison dans `tests/NetworkLimiter.Contracts.Tests/InactiveReasonTests.cs` : toute règle `Defined` porte **exactement une** raison d'inactivité ; une règle inactive sans raison fait échouer le contrat
+- [X] T115 [P] [US5] Écrire le test de raison dans `tests/NetworkLimiter.Contracts.Tests/InactiveReasonTests.cs` : toute règle `Defined` porte **exactement une** raison d'inactivité ; une règle inactive sans raison fait échouer le contrat
 - [ ] T116 [P] [US5] Écrire le test de désinstallation dans `tests/NetworkLimiter.Integration.Tests/Installer/UninstallTests.cs` : zéro limite active, service pilote supprimé, `%ProgramData%\NetworkLimiter` supprimé, réseau identique à l'état d'origine (SC-010)
 
 ### Implementation for User Story 5

@@ -1,6 +1,14 @@
+using System.Text.Json.Serialization;
+
 namespace NetworkLimiter.Contracts.Messages;
 
 /// <summary>État d'application d'une règle.</summary>
+/// <remarks>
+/// Sérialisée en toutes lettres, comme <see cref="ErrorCode"/>. En numérique, réordonner
+/// l'énumération changerait silencieusement le sens pour un client plus ancien : « active »
+/// deviendrait « inactive » sans qu'aucune version de protocole ne bouge.
+/// </remarks>
+[JsonConverter(typeof(JsonStringEnumConverter<RuleApplicationStatus>))]
 public enum RuleApplicationStatus
 {
     /// <summary>La règle est appliquée : une application visée tourne et son trafic est plafonné.</summary>
@@ -8,6 +16,47 @@ public enum RuleApplicationStatus
 
     /// <summary>La règle est définie mais ne s'applique pas ; <c>InactiveReason</c> dit pourquoi.</summary>
     Inactive,
+}
+
+/// <summary>
+/// Pourquoi une règle définie ne s'applique pas (FR-026).
+/// </summary>
+/// <remarks>
+/// <para>
+/// Ce vocabulaire appartient au <b>contrat</b>, pas au service. Il traverse la frontière IPC :
+/// le laisser dépendre d'une énumération interne rendrait un simple renommage capable de casser
+/// l'interface sans qu'aucun compilateur ne le signale, puisque la valeur voyageait auparavant
+/// sous forme de chaîne obtenue par <c>ToString()</c>.
+/// </para>
+/// <para>
+/// L'ordre de déclaration est celui de la <b>priorité</b> : la cause la plus englobante d'abord.
+/// Annoncer « application non lancée » alors que toute la limitation est suspendue enverrait
+/// l'utilisateur chercher au mauvais endroit.
+/// </para>
+/// </remarks>
+[JsonConverter(typeof(JsonStringEnumConverter<RuleInactiveReasonDto>))]
+public enum RuleInactiveReasonDto
+{
+    /// <summary>L'interception n'est pas opérationnelle : pilote absent, handle fermé.</summary>
+    InterceptionUnavailable,
+
+    /// <summary>La limitation est suspendue globalement.</summary>
+    GloballySuspended,
+
+    /// <summary>L'utilisateur a désactivé la règle sans la supprimer.</summary>
+    RuleDisabled,
+
+    /// <summary>Le chemin enregistré n'existe plus et aucun repli n'a été trouvé.</summary>
+    ExecutablePathNotFound,
+
+    /// <summary>La règle s'applique via le repli sur le nom d'exécutable, pas le chemin exact.</summary>
+    MatchedByFallbackName,
+
+    /// <summary>Application packagée non prise en charge.</summary>
+    PackagedAppUnsupported,
+
+    /// <summary>Aucun processus correspondant n'est en cours d'exécution.</summary>
+    ApplicationNotRunning,
 }
 
 /// <summary>
@@ -28,7 +77,30 @@ public sealed record RuleStateDto
     public required RuleApplicationStatus Status { get; init; }
 
     /// <summary>Raison de l'inactivité, ou <c>null</c> si la règle s'applique.</summary>
-    public string? InactiveReason { get; init; }
+    public RuleInactiveReasonDto? InactiveReason { get; init; }
+
+    /// <summary>
+    /// Vérifie l'invariant du contrat, ou rend le problème constaté.
+    /// </summary>
+    /// <remarks>
+    /// <b>Exactement une</b> raison pour une règle inactive, <b>aucune</b> pour une règle
+    /// active. Une règle inactive sans raison est le pire des deux mondes : l'interface
+    /// affiche « ne s'applique pas » et ne peut rien dire de plus, laissant l'utilisateur
+    /// devant un problème sans prise. FR-026 existe précisément pour l'interdire.
+    /// </remarks>
+    public string? Validate() => (Status, InactiveReason) switch
+    {
+        (RuleApplicationStatus.Inactive, null) =>
+            "Une règle inactive doit porter une raison (FR-026).",
+
+        (RuleApplicationStatus.Active, not null) =>
+            "Une règle active ne peut pas porter de raison d'inactivité.",
+
+        (RuleApplicationStatus.Inactive, { } reason) when !Enum.IsDefined(reason) =>
+            $"Raison d'inactivité inconnue : {reason}.",
+
+        _ => null,
+    };
 
     /// <summary>
     /// Nombre de processus en cours actuellement couverts par cette règle.

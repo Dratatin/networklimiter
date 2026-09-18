@@ -234,7 +234,7 @@ public sealed class RequestDispatcherTests : IDisposable
 
         // FR-026 : une regle definie mais inactive doit TOUJOURS pouvoir dire pourquoi.
         rule.Status.Should().Be(RuleApplicationStatus.Inactive);
-        rule.InactiveReason.Should().Be(nameof(RuleInactiveReason.ApplicationNotRunning));
+        rule.InactiveReason.Should().Be(RuleInactiveReasonDto.ApplicationNotRunning);
         rule.MatchedProcessCount.Should().Be(0);
     }
 

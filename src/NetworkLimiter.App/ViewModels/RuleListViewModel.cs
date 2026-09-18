@@ -50,14 +50,30 @@ public sealed partial class RuleRowViewModel : ObservableObject
     public string? InactiveExplanation => State.InactiveReason switch
     {
         null => null,
-        "ApplicationNotRunning" => "L'application n'est pas lancée. La limite s'appliquera dès son démarrage.",
-        "ExecutablePathNotFound" => "L'exécutable est introuvable à ce chemin. Il a peut-être été déplacé ou désinstallé.",
-        "MatchedByFallbackName" => "Le chemin enregistré n'existe plus ; la limite s'applique par le nom de l'exécutable.",
-        "RuleDisabled" => "Règle désactivée.",
-        "GloballySuspended" => "Toute la limitation est suspendue.",
-        "InterceptionUnavailable" => "L'interception n'est pas opérationnelle. Aucune limite n'est appliquée.",
-        "PackagedAppUnsupported" => "Les applications du Microsoft Store ne sont pas prises en charge.",
-        var other => other,
+
+        RuleInactiveReasonDto.ApplicationNotRunning =>
+            "L'application n'est pas lancée. La limite s'appliquera dès son démarrage.",
+
+        RuleInactiveReasonDto.ExecutablePathNotFound =>
+            "L'exécutable est introuvable à ce chemin. Il a peut-être été déplacé ou désinstallé.",
+
+        RuleInactiveReasonDto.MatchedByFallbackName =>
+            "Le chemin enregistré n'existe plus ; la limite s'applique par le nom de l'exécutable.",
+
+        RuleInactiveReasonDto.RuleDisabled => "Règle désactivée.",
+
+        RuleInactiveReasonDto.GloballySuspended => "Toute la limitation est suspendue.",
+
+        RuleInactiveReasonDto.InterceptionUnavailable =>
+            "L'interception n'est pas opérationnelle. Aucune limite n'est appliquée.",
+
+        RuleInactiveReasonDto.PackagedAppUnsupported =>
+            "Les applications du Microsoft Store ne sont pas prises en charge.",
+
+        // Un service plus recent peut rendre une raison que cette interface ignore. La taire
+        // laisserait une regle inactive sans aucune explication, ce qui est pire qu'un libelle
+        // brut : l'utilisateur saurait au moins quoi chercher.
+        var other => other.ToString(),
     };
 
     /// <summary>Nombre de processus couverts, pour lever le doute sur « pourquoi 0 ? ».</summary>

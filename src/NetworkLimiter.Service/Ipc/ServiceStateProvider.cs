@@ -99,10 +99,33 @@ public sealed class ServiceStateProvider : IStateSource
         {
             Rule = rule,
             Status = reason is null ? RuleApplicationStatus.Active : RuleApplicationStatus.Inactive,
-            InactiveReason = reason?.ToString(),
+            InactiveReason = reason is { } value ? ToContract(value) : null,
             MatchedProcessCount = CountMatching(rule, running),
         };
     }
+
+    /// <summary>
+    /// Traduit une raison interne vers le vocabulaire du contrat.
+    /// </summary>
+    /// <remarks>
+    /// Explicite, et non un <c>ToString()</c> : ajouter une raison côté service devient une
+    /// erreur de compilation ici, là où la conversion par nom aurait envoyé une chaîne inconnue
+    /// sur le fil et laissé l'interface l'afficher telle quelle, en anglais, sans explication.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">La raison n'a pas d'équivalent au contrat.</exception>
+    private static RuleInactiveReasonDto ToContract(RuleInactiveReason reason) => reason switch
+    {
+        RuleInactiveReason.InterceptionUnavailable => RuleInactiveReasonDto.InterceptionUnavailable,
+        RuleInactiveReason.GloballySuspended => RuleInactiveReasonDto.GloballySuspended,
+        RuleInactiveReason.RuleDisabled => RuleInactiveReasonDto.RuleDisabled,
+        RuleInactiveReason.ExecutablePathNotFound => RuleInactiveReasonDto.ExecutablePathNotFound,
+        RuleInactiveReason.MatchedByFallbackName => RuleInactiveReasonDto.MatchedByFallbackName,
+        RuleInactiveReason.PackagedAppUnsupported => RuleInactiveReasonDto.PackagedAppUnsupported,
+        RuleInactiveReason.ApplicationNotRunning => RuleInactiveReasonDto.ApplicationNotRunning,
+
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(reason), reason, "Cette raison d'inactivité n'a pas d'équivalent au contrat."),
+    };
 
     private static int CountMatching(RuleDto rule, IReadOnlySet<string> running)
     {

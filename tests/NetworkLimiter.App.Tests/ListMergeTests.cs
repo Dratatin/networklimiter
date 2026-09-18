@@ -83,7 +83,7 @@ public sealed class ListMergeTests
     {
         var list = new RuleListViewModel();
 
-        list.Merge([Rule(Guid.NewGuid(), 204_800, applied: false, reason: "ApplicationNotRunning")]);
+        list.Merge([Rule(Guid.NewGuid(), 204_800, applied: false, reason: RuleInactiveReasonDto.ApplicationNotRunning)]);
 
         // FR-026 : afficher « ApplicationNotRunning » reviendrait a ne rien expliquer.
         list.Rules[0].InactiveExplanation.Should().Contain("n'est pas lancée");
@@ -94,12 +94,12 @@ public sealed class ListMergeTests
     {
         var list = new RuleListViewModel();
 
-        list.Merge([Rule(Guid.NewGuid(), 204_800, applied: false, reason: "RaisonFuture")]);
+        list.Merge([Rule(Guid.NewGuid(), 204_800, applied: false, reason: (RuleInactiveReasonDto)999)]);
 
         // Un service plus recent peut rendre une raison que cette interface ne connait pas.
         // La taire laisserait une regle inactive sans aucune explication, ce qui est pire
         // qu'un libelle brut.
-        list.Rules[0].InactiveExplanation.Should().Be("RaisonFuture");
+        list.Rules[0].InactiveExplanation.Should().Be("999");
     }
 
     private static ObservedAppDto App(string path, bool alreadyRuled = false) => new()
@@ -109,7 +109,7 @@ public sealed class ListMergeTests
         AlreadyRuled = alreadyRuled,
     };
 
-    private static RuleStateDto Rule(Guid id, long download, bool applied, string? reason = null) => new()
+    private static RuleStateDto Rule(Guid id, long download, bool applied, RuleInactiveReasonDto? reason = null) => new()
     {
         Rule = new RuleDto
         {
@@ -126,7 +126,7 @@ public sealed class ListMergeTests
             ExemptFromGlobal = false,
         },
         Status = applied ? RuleApplicationStatus.Active : RuleApplicationStatus.Inactive,
-        InactiveReason = applied ? null : reason ?? "ApplicationNotRunning",
+        InactiveReason = applied ? null : reason ?? RuleInactiveReasonDto.ApplicationNotRunning,
         MatchedProcessCount = applied ? 1 : 0,
     };
 }
