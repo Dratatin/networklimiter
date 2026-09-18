@@ -6,6 +6,13 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <UserSecretsId>dotnet-NetworkLimiter.Service-4e93ff2c-1eba-447b-a8e2-ae40d4fc87ee</UserSecretsId>
+    <!--
+      Seul projet autorise a utiliser unsafe. L'interop WinDivert manipule des pointeurs de
+      chaine renvoyes par le compilateur de filtres ; la justification ecrite est exigee par
+      la constitution, section « Exigences de securite ». L'usage reste confine a
+      Interception/ et n'expose aucun pointeur au-dela.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +22,18 @@
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Serilog.Sinks.EventLog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Bibliotheque WinDivert, restauree par tools/restore-windivert.ps1 apres verification de
+      son empreinte SHA-256. Jamais telechargee a l'execution, jamais versionnee. Copiee en
+      sortie pour que le service et les tests la trouvent.
+    -->
+    <Content Include="$(MSBuildThisFileDirectory)..\..\build\windivert\x64\WinDivert.dll"
+             Condition="Exists('$(MSBuildThisFileDirectory)..\..\build\windivert\x64\WinDivert.dll')"
+             Link="WinDivert.dll"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

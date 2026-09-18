@@ -98,13 +98,13 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Interception WinDivert
 
-- [ ] T038 [P] Implémenter les liaisons P/Invoke dans `src/NetworkLimiter.Service/Interception/WinDivertNative.cs` : `WinDivertOpen`, `WinDivertRecvEx`, `WinDivertSendEx`, `WinDivertSetParam`, `WinDivertShutdown`, `WinDivertClose`, avec `SafeHandle` et libération déterministe
+- [X] T038 [P] Implémenter les liaisons P/Invoke dans `src/NetworkLimiter.Service/Interception/WinDivertNative.cs` : `WinDivertOpen`, `WinDivertRecvEx`, `WinDivertSendEx`, `WinDivertSetParam`, `WinDivertShutdown`, `WinDivertClose`, avec `SafeHandle` et libération déterministe
 - [ ] T039 [P] Définir l'abstraction `IPacketInterceptor` et son double de test dans `src/NetworkLimiter.Service/Interception/` et `tests/NetworkLimiter.Service.Tests/Fakes/`
-- [ ] T040 [P] Écrire les tests du constructeur de filtre dans `tests/NetworkLimiter.Service.Tests/Interception/FilterBuilderTests.cs` : le filtre couvre **IPv4 et IPv6** (FR-008), exclut la boucle locale via le bit `Loopback`, et le trafic IPv6 n'échappe à aucun plafond
-- [ ] T041 [P] Implémenter `FilterBuilder` (chaîne de filtre WinDivert, IPv4 + IPv6) dans `src/NetworkLimiter.Service/Interception/FilterBuilder.cs` — un plafond contournable en IPv6 serait une défaillance silencieuse
+- [X] T040 [P] Écrire les tests du constructeur de filtre dans `tests/NetworkLimiter.Service.Tests/Interception/FilterBuilderTests.cs` : le filtre couvre **IPv4 et IPv6** (FR-008), exclut la boucle locale via le bit `Loopback`, et le trafic IPv6 n'échappe à aucun plafond
+- [X] T041 [P] Implémenter `FilterBuilder` (chaîne de filtre WinDivert, IPv4 + IPv6) dans `src/NetworkLimiter.Service/Interception/FilterBuilder.cs` — un plafond contournable en IPv6 serait une défaillance silencieuse
 - [ ] T042 Ouvrir le handle FLOW (`WINDIVERT_LAYER_FLOW`, `SNIFF | RECV_ONLY`) dans `src/NetworkLimiter.Service/Interception/FlowInterceptor.cs`
-- [ ] T043 Écrire les tests de table de flux dans `tests/NetworkLimiter.Service.Tests/FlowTable/FlowTableTests.cs` : purge sur `FLOW_DELETED`, balayage des orphelins, table bornée, **flux inconnu → paquet réinjecté immédiatement sans limitation**
-- [ ] T044 Implémenter `FlowTable` (quintuplet → PID) dans `src/NetworkLimiter.Service/FlowTable/FlowTable.cs`
+- [X] T043 Écrire les tests de table de flux dans `tests/NetworkLimiter.Service.Tests/FlowTable/FlowTableTests.cs` : purge sur `FLOW_DELETED`, balayage des orphelins, table bornée, **flux inconnu → paquet réinjecté immédiatement sans limitation**
+- [X] T044 Implémenter `FlowTable` (quintuplet → PID) dans `src/NetworkLimiter.Service/FlowTable/FlowTable.cs`
 - [ ] T045 Ouvrir le handle NETWORK et la boucle de drainage dans `src/NetworkLimiter.Service/Interception/NetworkInterceptor.cs` : lecture par lots de **255** paquets, `QUEUE_LENGTH=16384`, `QUEUE_SIZE=33554432`, `QUEUE_TIME` au défaut de 2000 ms
 - [ ] T046 Implémenter l'indicateur de pression de file et la **fermeture du handle au-delà du seuil** dans `src/NetworkLimiter.Service/Health/QueuePressureMonitor.cs` — ne plus limiter plutôt que laisser le noyau rejeter en silence (R-004)
 
