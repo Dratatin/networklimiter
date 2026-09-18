@@ -209,4 +209,30 @@ internal static partial class WinDivertNative
         uint objectLength,
         byte** errorMessage,
         uint* errorPosition);
+
+    /// <summary>
+    /// Évalue un filtre contre un événement donné, sans ouvrir de handle.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Comme <see cref="HelperCompileFilter"/>, purement en mode utilisateur. La différence est
+    /// décisive : compiler dit qu'un filtre est <b>syntaxiquement valide</b>, évaluer dit qu'il
+    /// <b>correspond</b>. Un filtre parfaitement valide qui ne correspond jamais à rien est
+    /// accepté sans un mot par WinDivert, et se traduit par une couche silencieuse.
+    /// </para>
+    /// <para>
+    /// Pour un événement de flux, <paramref name="packet"/> vaut <c>null</c> et
+    /// <paramref name="packetLength"/> zéro : il n'y a pas de paquet à cette couche — ce qui
+    /// est précisément la raison pour laquelle les prédicats d'en-tête y sont toujours faux.
+    /// </para>
+    /// </remarks>
+    [LibraryImport(Library, EntryPoint = "WinDivertHelperEvalFilter",
+                   StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static unsafe partial bool HelperEvalFilter(
+        string filter,
+        byte* packet,
+        uint packetLength,
+        WinDivertAddress* address);
 }

@@ -75,10 +75,20 @@ public sealed class FilterBuilderTests
     }
 
     [Fact]
-    public void FiltreDeFlux_CouvreLesDeuxFamillesDAdresses()
+    public void FiltreDeFlux_NeMentionnePasDeFamille()
     {
-        FilterBuilder.FlowFilter.Should().Contain("ip ");
-        FilterBuilder.FlowFilter.Should().Contain("ipv6");
+        // Ce test disait exactement l'inverse et EXIGEAIT « ip » et « ipv6 » dans le filtre de
+        // flux. Il passait, et il imposait un filtre qui ne correspondait a aucun evenement :
+        // a la couche flux il n'y a pas de paquet, donc ces predicats d'en-tete y sont
+        // toujours faux. La couche est restee muette, aucune regle ne s'est appliquee, et la
+        // suite etait verte.
+        //
+        // La lecon n'est pas « il fallait ecrire l'assertion dans l'autre sens » : c'est que
+        // verifier le TEXTE d'un filtre ne dit rien de ce qu'il capte. La couverture des deux
+        // familles est desormais prouvee par evaluation dans FilterMatchingTests, contre des
+        // evenements IPv4 et IPv6 reels.
+        FilterBuilder.FlowFilter.Should().NotContain("ipv6",
+            "un predicat d'en-tete a la couche flux rend le filtre impossible a satisfaire");
     }
 
     [Fact]
