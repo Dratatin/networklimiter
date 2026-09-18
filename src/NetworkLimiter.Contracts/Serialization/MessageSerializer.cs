@@ -25,6 +25,9 @@ namespace NetworkLimiter.Contracts.Serialization;
 [JsonSerializable(typeof(UpsertRulePayload))]
 [JsonSerializable(typeof(DeleteRulePayload))]
 [JsonSerializable(typeof(SetRuleEnabledPayload))]
+[JsonSerializable(typeof(GlobalLimitDto))]
+[JsonSerializable(typeof(ProfileDto))]
+[JsonSerializable(typeof(PersistedConfig))]
 internal sealed partial class MessageJsonContext : JsonSerializerContext;
 
 /// <summary>
@@ -49,6 +52,14 @@ public static class MessageSerializer
     public const int MaxDepth = 32;
 
     private static readonly JsonSerializerOptions Options = CreateOptions();
+    private static readonly JsonSerializerOptions ConfigOptions = CreateConfigOptions();
+
+    private static JsonSerializerOptions CreateConfigOptions()
+    {
+        var options = new JsonSerializerOptions(CreateOptions()) { WriteIndented = true };
+        options.MakeReadOnly();
+        return options;
+    }
 
     private static JsonSerializerOptions CreateOptions()
     {
@@ -122,6 +133,21 @@ public static class MessageSerializer
 
         return payload ?? throw new JsonException($"Charge utile illisible pour « {envelope.Type} ».");
     }
+
+    /// <summary>Sérialise la configuration persistée en octets UTF-8.</summary>
+    /// <remarks>
+    /// Indentée : ce fichier est lu et parfois corrigé à la main par un administrateur, et un
+    /// JSON sur une seule ligne serait illisible au moment où l'on en a le plus besoin.
+    /// </remarks>
+    public static byte[] SerializeConfig(PersistedConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return JsonSerializer.SerializeToUtf8Bytes(config, ConfigOptions);
+    }
+
+    /// <summary>Désérialise la configuration persistée.</summary>
+    public static PersistedConfig? DeserializeConfig(ReadOnlySpan<byte> utf8Json) =>
+        JsonSerializer.Deserialize<PersistedConfig>(utf8Json, ConfigOptions);
 
     /// <summary>Convertit une charge utile en élément JSON, pour insertion dans une enveloppe.</summary>
     internal static JsonElement ToElement<TPayload>(TPayload payload)
