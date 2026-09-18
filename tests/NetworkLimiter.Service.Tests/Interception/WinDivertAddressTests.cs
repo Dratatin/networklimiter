@@ -188,6 +188,59 @@ public sealed class WinDivertAddressTests
         address.Sniffed.Should().BeFalse();
     }
 
+    // -- Lecture de l'union FLOW ----------------------------------------------
+
+    [Fact]
+    public void LesDonneesDeFlux_SontLuesDepuisLaZoneDUnion()
+    {
+        // L'union du C n'a pas d'equivalent en C# : la zone est reinterpretee a partir de sa
+        // representation binaire. Une erreur de decalage produirait des identifiants de
+        // processus inventes, donc du trafic attribue a des applications au hasard — sans
+        // qu'aucun plantage ne le signale.
+        var flow = new WinDivertFlowData
+        {
+            EndpointId = 0x1122334455667788,
+            ParentEndpointId = 0x8877665544332211,
+            ProcessId = 4242,
+            LocalAddr0 = 0x0A000001,
+            RemoteAddr0 = 0x5DB8D822,
+            LocalPort = 50000,
+            RemotePort = 443,
+            Protocol = 6,
+        };
+
+        uint bits = WinDivertAddress.PackBits(WinDivertLayer.Flow, WinDivertEvent.FlowEstablished);
+        WinDivertAddress address = WinDivertAddress.FromFlowData(bits, flow);
+
+        WinDivertFlowData read = address.AsFlowData();
+
+        read.EndpointId.Should().Be(flow.EndpointId);
+        read.ParentEndpointId.Should().Be(flow.ParentEndpointId);
+        read.ProcessId.Should().Be(4242u);
+        read.LocalAddr0.Should().Be(flow.LocalAddr0);
+        read.RemoteAddr0.Should().Be(flow.RemoteAddr0);
+        read.LocalPort.Should().Be(50000);
+        read.RemotePort.Should().Be(443);
+        read.Protocol.Should().Be(6);
+    }
+
+    [Fact]
+    public void LesChampsDEnTete_SurviventALEcritureDeLUnion()
+    {
+        // Verrouille le decalage : ecrire l'union ne doit pas ecraser l'horodatage ni les
+        // champs de bits, qui la precedent.
+        uint bits = WinDivertAddress.PackBits(
+            WinDivertLayer.Flow, WinDivertEvent.FlowDeleted, sniffed: true);
+
+        WinDivertAddress address = WinDivertAddress.FromFlowData(
+            bits, new WinDivertFlowData { ProcessId = 7 });
+
+        address.Layer.Should().Be(WinDivertLayer.Flow);
+        address.Event.Should().Be(WinDivertEvent.FlowDeleted);
+        address.Sniffed.Should().BeTrue();
+        address.AsFlowData().ProcessId.Should().Be(7u);
+    }
+
     [Fact]
     public void ToutesLesValeursDeCoucheEtEvenement_SontDistinctes()
     {

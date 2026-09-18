@@ -148,6 +148,37 @@ public struct WinDivertAddress
     /// <summary>Construit une adresse à partir de champs bruts. Réservé aux tests.</summary>
     internal static WinDivertAddress FromRaw(long timestamp, uint bits) =>
         new() { _timestamp = timestamp, _bits = bits };
+
+    /// <summary>
+    /// Lit les données de la couche <c>FLOW</c> superposées à la zone d'union.
+    /// </summary>
+    /// <remarks>
+    /// L'union du C n'a pas d'équivalent en C# : la zone est réinterprétée à partir de sa
+    /// représentation binaire. N'a de sens que si <see cref="Layer"/> vaut
+    /// <see cref="WinDivertLayer.Flow"/> — lire une union dans le mauvais type produirait des
+    /// identifiants de processus inventés, donc du trafic attribué à des applications au
+    /// hasard.
+    /// </remarks>
+    public readonly WinDivertFlowData AsFlowData()
+    {
+        ReadOnlySpan<WinDivertAddress> self = new(in this);
+        ReadOnlySpan<byte> bytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(self);
+
+        return System.Runtime.InteropServices.MemoryMarshal.Read<WinDivertFlowData>(bytes[UnionOffset..]);
+    }
+
+    /// <summary>Compose une adresse de couche FLOW. Réservé aux tests.</summary>
+    internal static WinDivertAddress FromFlowData(uint bits, in WinDivertFlowData flow)
+    {
+        var address = new WinDivertAddress { _bits = bits };
+
+        Span<WinDivertAddress> target = new(ref address);
+        Span<byte> bytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(target);
+
+        System.Runtime.InteropServices.MemoryMarshal.Write(bytes[UnionOffset..], in flow);
+
+        return address;
+    }
 }
 
 /// <summary>
