@@ -90,11 +90,11 @@ chaîne d'interception complète — c'est pourquoi cette phase est substantiell
 
 ### Hôte de service, journalisation, compatibilité
 
-- [ ] T033 Implémenter l'hôte worker dans `src/NetworkLimiter.Service/Program.cs` avec Serilog vers fichier **rotatif borné en taille** dans `%ProgramData%\NetworkLimiter\logs\` et journal d'événements Windows pour le critique
-- [ ] T034 Écrire les tests de compatibilité dans `tests/NetworkLimiter.Service.Tests/CompatibilityGateTests.cs` : build < 19045 refusé, architecture ARM64 refusée, x86 refusé, message nommant la cause
-- [ ] T035 Implémenter `CompatibilityGate` au démarrage dans `src/NetworkLimiter.Service/CompatibilityGate.cs` — **refus explicite**, jamais de dégradation silencieuse
-- [ ] T036 Écrire les tests de transition dans `tests/NetworkLimiter.Service.Tests/Safety/FailOpenTests.cs` : tout chemin quittant `Shaping` **ferme les handles avant toute autre action** ; `Refused`, `Degraded` et `FailOpen` n'appliquent aucune limite
-- [ ] T037 Implémenter la machine à états et le chien de garde dans `src/NetworkLimiter.Service/Safety/` : fermeture des handles sur arrêt, `SERVICE_CONTROL_SHUTDOWN`, exception non gérée et blocage de la boucle
+- [X] T033 Implémenter l'hôte worker dans `src/NetworkLimiter.Service/Program.cs` avec Serilog vers fichier **rotatif borné en taille** dans `%ProgramData%\NetworkLimiter\logs\` et journal d'événements Windows pour le critique
+- [X] T034 Écrire les tests de compatibilité dans `tests/NetworkLimiter.Service.Tests/CompatibilityGateTests.cs` : build < 19045 refusé, architecture ARM64 refusée, x86 refusé, message nommant la cause
+- [X] T035 Implémenter `CompatibilityGate` au démarrage dans `src/NetworkLimiter.Service/CompatibilityGate.cs` — **refus explicite**, jamais de dégradation silencieuse
+- [X] T036 Écrire les tests de transition dans `tests/NetworkLimiter.Service.Tests/Safety/FailOpenTests.cs` : tout chemin quittant `Shaping` **ferme les handles avant toute autre action** ; `Refused`, `Degraded` et `FailOpen` n'appliquent aucune limite
+- [X] T037 Implémenter la machine à états et le chien de garde dans `src/NetworkLimiter.Service/Safety/` : fermeture des handles sur arrêt, `SERVICE_CONTROL_SHUTDOWN`, exception non gérée et blocage de la boucle
 
 ### Interception WinDivert
 
